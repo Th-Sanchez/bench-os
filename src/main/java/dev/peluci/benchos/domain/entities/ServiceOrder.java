@@ -1,26 +1,32 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.ServiceOrderStatus;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.UUID;
 
 public class ServiceOrder extends BaseEntity {
 
-    private Customer customer;
-    private User user;
-    private String status;
+    private UUID tenantId;
+    private UUID customerId;
+    private UUID attendantId;
+    private String osCode;
+    private ServiceOrderStatus status;
     private String deviceModel;
     private String deviceVoltage;
-    private Date receivedAt;
-    private Date deadlineAt;
-    private Boolean discardAuthorized;
+    private LocalDate receivedAt;
+    private LocalDate deadlineAt;
+    private boolean discardAuthorized;
     private String notes;
 
-    public ServiceOrder(Customer customer, User user, String status, String deviceModel, String deviceVoltage,
-                        Date receivedAt, Date deadlineAt, Boolean discardAuthorized, String notes) {
+    public ServiceOrder(UUID tenantId, UUID customerId, UUID attendantId, String osCode, ServiceOrderStatus status, String deviceModel,
+                        String deviceVoltage, LocalDate receivedAt, LocalDate deadlineAt, boolean discardAuthorized, String notes) {
         super();
-        this.customer = customer;
-        this.user = user;
+        this.tenantId = tenantId;
+        this.customerId = customerId;
+        this.attendantId = attendantId;
+        this.osCode = osCode;
         this.status = status;
         this.deviceModel = deviceModel;
         this.deviceVoltage = deviceVoltage;
@@ -30,12 +36,14 @@ public class ServiceOrder extends BaseEntity {
         this.notes = notes;
     }
 
-    public ServiceOrder(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                        Customer customer, User user, String status, String deviceModel, String deviceVoltage,
-                        Date receivedAt, Date deadlineAt, Boolean discardAuthorized, String notes) {
+    public ServiceOrder(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                        UUID tenantId, UUID customerId, UUID attendantId, String osCode, ServiceOrderStatus status, String deviceModel,
+                        String deviceVoltage, LocalDate receivedAt, LocalDate deadlineAt, boolean discardAuthorized, String notes) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.customer = customer;
-        this.user = user;
+        this.tenantId = tenantId;
+        this.customerId = customerId;
+        this.attendantId = attendantId;
+        this.osCode = osCode;
         this.status = status;
         this.deviceModel = deviceModel;
         this.deviceVoltage = deviceVoltage;
@@ -45,75 +53,47 @@ public class ServiceOrder extends BaseEntity {
         this.notes = notes;
     }
 
-    public Customer getCustomer() {
-        return customer;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setCustomer(Customer customer) {
-        this.customer = customer;
+    public UUID getCustomerId() {
+        return customerId;
     }
 
-    public User getUser() {
-        return user;
+    public UUID getAttendantId() {
+        return attendantId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public String getOsCode() {
+        return osCode;
     }
 
-    public String getStatus() {
+    public ServiceOrderStatus getStatus() {
         return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 
     public String getDeviceModel() {
         return deviceModel;
     }
 
-    public void setDeviceModel(String deviceModel) {
-        this.deviceModel = deviceModel;
-    }
-
     public String getDeviceVoltage() {
         return deviceVoltage;
     }
 
-    public void setDeviceVoltage(String deviceVoltage) {
-        this.deviceVoltage = deviceVoltage;
-    }
-
-    public Date getReceivedAt() {
+    public LocalDate getReceivedAt() {
         return receivedAt;
     }
 
-    public void setReceivedAt(Date receivedAt) {
-        this.receivedAt = receivedAt;
-    }
-
-    public Date getDeadlineAt() {
+    public LocalDate getDeadlineAt() {
         return deadlineAt;
     }
 
-    public void setDeadlineAt(Date deadlineAt) {
-        this.deadlineAt = deadlineAt;
-    }
-
-    public Boolean getDiscardAuthorized() {
+    public boolean isDiscardAuthorized() {
         return discardAuthorized;
-    }
-
-    public void setDiscardAuthorized(Boolean discardAuthorized) {
-        this.discardAuthorized = discardAuthorized;
     }
 
     public String getNotes() {
         return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
     }
 }

@@ -1,73 +1,62 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.BudgetItemType;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class BudgetItem extends BaseEntity {
 
-    private ServiceOrder serviceOrder;
+    private UUID tenantId;
+    private UUID serviceOrderId;
     private String description;
-    private String type;
+    private BudgetItemType type;
     private BigDecimal unitPrice;
-    private Integer quantity;
+    private int quantity;
 
-    public BudgetItem(ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+    public BudgetItem(UUID tenantId, UUID serviceOrderId, String description, BudgetItemType type, BigDecimal unitPrice, int quantity) {
         super();
-        this.serviceOrder = serviceOrder;
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.description = description;
         this.type = type;
         this.unitPrice = unitPrice;
         this.quantity = quantity;
     }
 
-    public BudgetItem(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                      ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+    public BudgetItem(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                      UUID tenantId, UUID serviceOrderId, String description, BudgetItemType type, BigDecimal unitPrice, int quantity) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.serviceOrder = serviceOrder;
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.description = description;
         this.type = type;
         this.unitPrice = unitPrice;
         this.quantity = quantity;
     }
 
-    public ServiceOrder getServiceOrder() {
-        return serviceOrder;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setServiceOrder(ServiceOrder serviceOrder) {
-        this.serviceOrder = serviceOrder;
+    public UUID getServiceOrderId() {
+        return serviceOrderId;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getType() {
+    public BudgetItemType getType() {
         return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
-    }
-
-    public Integer getQuantity() {
+    public int getQuantity() {
         return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
     }
 }
