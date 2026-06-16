@@ -5,22 +5,23 @@ import dev.peluci.benchos.domain.enums.PaymentSource;
 import dev.peluci.benchos.domain.enums.PaymentStatus;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class Payment extends BaseEntity {
 
-    private ServiceOrder serviceOrder;
+    private UUID tenantId;
+    private UUID serviceOrderId;
     private PaymentMethod method;
     private PaymentSource source;
     private PaymentStatus status;
     private BigDecimal amount;
-    private Timestamp paidAt;
+    private LocalDateTime paidAt;
 
-    public Payment(ServiceOrder serviceOrder, PaymentMethod method, PaymentSource source, PaymentStatus status, BigDecimal amount, Timestamp paidAt) {
-        super();
-        this.serviceOrder = serviceOrder;
+    public Payment(UUID tenantId, UUID serviceOrderId, PaymentMethod method, PaymentSource source, PaymentStatus status,
+                   BigDecimal amount, LocalDateTime paidAt) {
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.method = method;
         this.source = source;
         this.status = status;
@@ -28,10 +29,12 @@ public class Payment extends BaseEntity {
         this.paidAt = paidAt;
     }
 
-    public Payment(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                   ServiceOrder serviceOrder, PaymentMethod method, PaymentSource source, PaymentStatus status, BigDecimal amount, Timestamp paidAt) {
+    public Payment(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                   UUID tenantId, UUID serviceOrderId, PaymentMethod method, PaymentSource source, PaymentStatus status,
+                   BigDecimal amount, LocalDateTime paidAt) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.serviceOrder = serviceOrder;
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.method = method;
         this.source = source;
         this.status = status;
@@ -39,51 +42,31 @@ public class Payment extends BaseEntity {
         this.paidAt = paidAt;
     }
 
-    public ServiceOrder getServiceOrder() {
-        return serviceOrder;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setServiceOrder(ServiceOrder serviceOrder) {
-        this.serviceOrder = serviceOrder;
+    public UUID getServiceOrderId() {
+        return serviceOrderId;
     }
 
     public PaymentMethod getMethod() {
         return method;
     }
 
-    public void setMethod(PaymentMethod method) {
-        this.method = method;
-    }
-
     public PaymentSource getSource() {
         return source;
-    }
-
-    public void setSource(PaymentSource source) {
-        this.source = source;
     }
 
     public PaymentStatus getStatus() {
         return status;
     }
 
-    public void setStatus(PaymentStatus status) {
-        this.status = status;
-    }
-
     public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public Timestamp getPaidAt() {
+    public LocalDateTime getPaidAt() {
         return paidAt;
-    }
-
-    public void setPaidAt(Timestamp paidAt) {
-        this.paidAt = paidAt;
     }
 }

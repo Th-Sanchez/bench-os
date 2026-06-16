@@ -5,46 +5,41 @@ import java.util.UUID;
 
 public class Notification extends BaseEntity {
 
-    private User user;
+    private UUID tenantId;
+    private UUID userId;
     private String message;
-    private Boolean read;
+    private boolean read;
 
-    public Notification(User user, String message, Boolean read) {
+    public Notification(UUID tenantId, UUID userId, String message, boolean read) {
         super();
-        this.user = user;
+        this.tenantId = tenantId;
+        this.userId = userId;
         this.message = message;
         this.read = read;
     }
 
-    public Notification(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                        User user, String message, Boolean read) {
+    public Notification(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                        UUID tenantId, UUID userId, String message, boolean read) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.user = user;
+        this.tenantId = tenantId;
+        this.userId = userId;
         this.message = message;
         this.read = read;
     }
 
-    public User getUser() {
-        return user;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public UUID getUserId() {
+        return userId;
     }
 
     public String getMessage() {
         return message;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public Boolean getRead() {
+    public boolean isRead() {
         return read;
-    }
-
-    public void setRead(Boolean read) {
-        this.read = read;
     }
 }

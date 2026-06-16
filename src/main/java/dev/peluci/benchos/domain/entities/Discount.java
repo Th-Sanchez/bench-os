@@ -6,57 +6,48 @@ import java.util.UUID;
 
 public class Discount extends BaseEntity {
 
-    private ServiceOrder serviceOrder;
+    private UUID tenantId;
+    private UUID serviceOrderId;
     private BigDecimal requestedAmount;
     private BigDecimal approvedAmount;
-    private Boolean approved;
+    private boolean approved;
 
-    public Discount(ServiceOrder serviceOrder, BigDecimal requestedAmount, BigDecimal approvedAmount, Boolean approved) {
+    public Discount(UUID tenantId, UUID serviceOrderId, BigDecimal requestedAmount, BigDecimal approvedAmount, boolean approved) {
         super();
-        this.serviceOrder = serviceOrder;
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.requestedAmount = requestedAmount;
         this.approvedAmount = approvedAmount;
         this.approved = approved;
     }
 
-    public Discount(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                    ServiceOrder serviceOrder, BigDecimal requestedAmount, BigDecimal approvedAmount, Boolean approved) {
+    public Discount(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                    UUID tenantId, UUID serviceOrderId, BigDecimal requestedAmount, BigDecimal approvedAmount, boolean approved) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.serviceOrder = serviceOrder;
+        this.tenantId = tenantId;
+        this.serviceOrderId = serviceOrderId;
         this.requestedAmount = requestedAmount;
         this.approvedAmount = approvedAmount;
         this.approved = approved;
     }
 
-    public ServiceOrder getServiceOrder() {
-        return serviceOrder;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setServiceOrder(ServiceOrder serviceOrder) {
-        this.serviceOrder = serviceOrder;
+    public UUID getServiceOrderId() {
+        return serviceOrderId;
     }
 
     public BigDecimal getRequestedAmount() {
         return requestedAmount;
     }
 
-    public void setRequestedAmount(BigDecimal requestedAmount) {
-        this.requestedAmount = requestedAmount;
-    }
-
     public BigDecimal getApprovedAmount() {
         return approvedAmount;
     }
 
-    public void setApprovedAmount(BigDecimal approvedAmount) {
-        this.approvedAmount = approvedAmount;
-    }
-
-    public Boolean getApproved() {
+    public boolean isApproved() {
         return approved;
-    }
-
-    public void setApproved(Boolean approved) {
-        this.approved = approved;
     }
 }

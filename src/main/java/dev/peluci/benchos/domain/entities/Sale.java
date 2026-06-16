@@ -1,74 +1,60 @@
 package dev.peluci.benchos.domain.entities;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class Sale extends BaseEntity {
 
-    private Product product;
-    private Customer customer;
-    private Integer quantity;
+    private UUID tenantId;
+    private UUID productId;
+    private UUID customerId;
+    private int quantity;
     private BigDecimal totalPrice;
-    private Timestamp soldAt;
+    private LocalDateTime soldAt;
 
-    public Sale(Product product, Customer customer, Integer quantity, BigDecimal totalPrice, Timestamp soldAt) {
+    public Sale(UUID tenantId, UUID productId, UUID customerId, int quantity, BigDecimal totalPrice, LocalDateTime soldAt) {
         super();
-        this.product = product;
-        this.customer = customer;
+        this.tenantId = tenantId;
+        this.productId = productId;
+        this.customerId = customerId;
         this.quantity = quantity;
         this.totalPrice = totalPrice;
         this.soldAt = soldAt;
     }
 
-    public Sale(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                Product product, Customer customer, Integer quantity, BigDecimal totalPrice, Timestamp soldAt) {
+    public Sale(UUID id, boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                UUID tenantId, UUID productId, UUID customerId, int quantity, BigDecimal totalPrice, LocalDateTime soldAt) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
-        this.product = product;
-        this.customer = customer;
+        this.tenantId = tenantId;
+        this.productId = productId;
+        this.customerId = customerId;
         this.quantity = quantity;
         this.totalPrice = totalPrice;
         this.soldAt = soldAt;
     }
 
-    public Product getProduct() {
-        return product;
+    public UUID getTenantId() {
+        return tenantId;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+    public UUID getProductId() {
+        return productId;
     }
 
-    public Customer getCustomer() {
-        return customer;
+    public UUID getCustomerId() {
+        return customerId;
     }
 
-    public void setCustomer(Customer customer) {
-        this.customer = customer;
-    }
-
-    public Integer getQuantity() {
+    public int getQuantity() {
         return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
     }
 
     public BigDecimal getTotalPrice() {
         return totalPrice;
     }
 
-    public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalPrice = totalPrice;
-    }
-
-    public Timestamp getSoldAt() {
+    public LocalDateTime getSoldAt() {
         return soldAt;
-    }
-
-    public void setSoldAt(Timestamp soldAt) {
-        this.soldAt = soldAt;
     }
 }
