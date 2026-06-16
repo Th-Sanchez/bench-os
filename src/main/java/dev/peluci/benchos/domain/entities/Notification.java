@@ -16,7 +16,8 @@ public class Notification extends BaseEntity {
         this.read = read;
     }
 
-    public Notification(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete, User user, String message, Boolean read) {
+    public Notification(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                        User user, String message, Boolean read) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.user = user;
         this.message = message;
