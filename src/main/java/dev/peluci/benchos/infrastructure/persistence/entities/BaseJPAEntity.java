@@ -25,7 +25,8 @@ public abstract class BaseJPAEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private Boolean active = true;
+    @Column(nullable = false)
+    private boolean active = true;
 
     @CreatedDate
     @Column(name = "dt_insert", nullable = false, updatable = false)
