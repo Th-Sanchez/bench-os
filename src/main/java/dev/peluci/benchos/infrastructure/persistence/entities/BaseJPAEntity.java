@@ -18,24 +18,29 @@ import java.util.UUID;
 
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-@Getter @Setter
+@Getter
 @NoArgsConstructor
 public abstract class BaseJPAEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    protected UUID id;
+    private UUID id;
 
-    protected Boolean active = true;
+    private Boolean active = true;
 
     @CreatedDate
     @Column(name = "dt_insert", nullable = false, updatable = false)
-    protected LocalDateTime dtInsert;
+    private LocalDateTime dtInsert;
 
     @LastModifiedDate
     @Column(name = "dt_update", nullable = false)
-    protected LocalDateTime dtUpdate;
+    private LocalDateTime dtUpdate;
     @Column(name = "dt_delete")
-    protected LocalDateTime dtDelete;
+    private LocalDateTime dtDelete;
+
+    public void delete() {
+        this.active = false;
+        this.dtDelete = LocalDateTime.now();
+    }
 
 }
