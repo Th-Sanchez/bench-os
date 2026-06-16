@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public class BudgeItem extends BaseEntity {
+public class BudgetItem extends BaseEntity {
 
     private ServiceOrder serviceOrder;
     private String description;
@@ -12,7 +12,7 @@ public class BudgeItem extends BaseEntity {
     private BigDecimal unitPrice;
     private Integer quantity;
 
-    public BudgeItem(ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+    public BudgetItem(ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
         super();
         this.serviceOrder = serviceOrder;
         this.description = description;
@@ -21,8 +21,8 @@ public class BudgeItem extends BaseEntity {
         this.quantity = quantity;
     }
 
-    public BudgeItem(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                     ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+    public BudgetItem(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
+                      ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.serviceOrder = serviceOrder;
         this.description = description;
