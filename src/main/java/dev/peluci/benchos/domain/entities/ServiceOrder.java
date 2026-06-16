@@ -1,5 +1,7 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.ServiceOrderStatus;
+
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
@@ -8,7 +10,7 @@ public class ServiceOrder extends BaseEntity {
 
     private Customer customer;
     private User user;
-    private String status;
+    private ServiceOrderStatus status;
     private String deviceModel;
     private String deviceVoltage;
     private Date receivedAt;
@@ -16,7 +18,7 @@ public class ServiceOrder extends BaseEntity {
     private Boolean discardAuthorized;
     private String notes;
 
-    public ServiceOrder(Customer customer, User user, String status, String deviceModel, String deviceVoltage,
+    public ServiceOrder(Customer customer, User user, ServiceOrderStatus status, String deviceModel, String deviceVoltage,
                         Date receivedAt, Date deadlineAt, Boolean discardAuthorized, String notes) {
         super();
         this.customer = customer;
@@ -31,7 +33,7 @@ public class ServiceOrder extends BaseEntity {
     }
 
     public ServiceOrder(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                        Customer customer, User user, String status, String deviceModel, String deviceVoltage,
+                        Customer customer, User user, ServiceOrderStatus status, String deviceModel, String deviceVoltage,
                         Date receivedAt, Date deadlineAt, Boolean discardAuthorized, String notes) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.customer = customer;
@@ -61,11 +63,11 @@ public class ServiceOrder extends BaseEntity {
         this.user = user;
     }
 
-    public String getStatus() {
+    public ServiceOrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(ServiceOrderStatus status) {
         this.status = status;
     }
 

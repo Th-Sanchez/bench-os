@@ -1,5 +1,7 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.BudgetItemType;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -8,11 +10,11 @@ public class BudgetItem extends BaseEntity {
 
     private ServiceOrder serviceOrder;
     private String description;
-    private String type;
+    private BudgetItemType type;
     private BigDecimal unitPrice;
     private Integer quantity;
 
-    public BudgetItem(ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+    public BudgetItem(ServiceOrder serviceOrder, String description, BudgetItemType type, BigDecimal unitPrice, Integer quantity) {
         super();
         this.serviceOrder = serviceOrder;
         this.description = description;
@@ -22,7 +24,7 @@ public class BudgetItem extends BaseEntity {
     }
 
     public BudgetItem(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                      ServiceOrder serviceOrder, String description, String type, BigDecimal unitPrice, Integer quantity) {
+                      ServiceOrder serviceOrder, String description, BudgetItemType type, BigDecimal unitPrice, Integer quantity) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.serviceOrder = serviceOrder;
         this.description = description;
@@ -47,11 +49,11 @@ public class BudgetItem extends BaseEntity {
         this.description = description;
     }
 
-    public String getType() {
+    public BudgetItemType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(BudgetItemType type) {
         this.type = type;
     }
 

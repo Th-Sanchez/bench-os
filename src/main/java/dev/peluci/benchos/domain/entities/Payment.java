@@ -1,5 +1,9 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.PaymentMethod;
+import dev.peluci.benchos.domain.enums.PaymentSource;
+import dev.peluci.benchos.domain.enums.PaymentStatus;
+
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -8,13 +12,13 @@ import java.util.UUID;
 public class Payment extends BaseEntity {
 
     private ServiceOrder serviceOrder;
-    private String method;
-    private String source;
-    private String status;
+    private PaymentMethod method;
+    private PaymentSource source;
+    private PaymentStatus status;
     private BigDecimal amount;
     private Timestamp paidAt;
 
-    public Payment(ServiceOrder serviceOrder, String method, String source, String status, BigDecimal amount, Timestamp paidAt) {
+    public Payment(ServiceOrder serviceOrder, PaymentMethod method, PaymentSource source, PaymentStatus status, BigDecimal amount, Timestamp paidAt) {
         super();
         this.serviceOrder = serviceOrder;
         this.method = method;
@@ -25,7 +29,7 @@ public class Payment extends BaseEntity {
     }
 
     public Payment(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                   ServiceOrder serviceOrder, String method, String source, String status, BigDecimal amount, Timestamp paidAt) {
+                   ServiceOrder serviceOrder, PaymentMethod method, PaymentSource source, PaymentStatus status, BigDecimal amount, Timestamp paidAt) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.serviceOrder = serviceOrder;
         this.method = method;
@@ -43,27 +47,27 @@ public class Payment extends BaseEntity {
         this.serviceOrder = serviceOrder;
     }
 
-    public String getMethod() {
+    public PaymentMethod getMethod() {
         return method;
     }
 
-    public void setMethod(String method) {
+    public void setMethod(PaymentMethod method) {
         this.method = method;
     }
 
-    public String getSource() {
+    public PaymentSource getSource() {
         return source;
     }
 
-    public void setSource(String source) {
+    public void setSource(PaymentSource source) {
         this.source = source;
     }
 
-    public String getStatus() {
+    public PaymentStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(PaymentStatus status) {
         this.status = status;
     }
 

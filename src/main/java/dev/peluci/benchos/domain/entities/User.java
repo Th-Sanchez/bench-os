@@ -1,5 +1,7 @@
 package dev.peluci.benchos.domain.entities;
 
+import dev.peluci.benchos.domain.enums.UserRole;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -7,9 +9,9 @@ public class User extends BaseEntity {
 
     private String email;
     private String passwordHash;
-    private String role;
+    private UserRole role;
 
-    public User(String email, String passwordHash, String role) {
+    public User(String email, String passwordHash, UserRole role) {
         super();
         this.email = email;
         this.passwordHash = passwordHash;
@@ -17,7 +19,7 @@ public class User extends BaseEntity {
     }
 
     public User(UUID id, Boolean active, LocalDateTime dtInsert, LocalDateTime dtUpdate, LocalDateTime dtDelete,
-                String email, String passwordHash, String role) {
+                String email, String passwordHash, UserRole role) {
         super(id, active, dtInsert, dtUpdate, dtDelete);
         this.email = email;
         this.passwordHash = passwordHash;
@@ -40,11 +42,11 @@ public class User extends BaseEntity {
         this.passwordHash = passwordHash;
     }
 
-    public String getRole() {
+    public UserRole getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public void setRole(UserRole role) {
         this.role = role;
     }
 }
