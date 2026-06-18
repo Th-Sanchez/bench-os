@@ -7,20 +7,22 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
-        name = "service_orders",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"os_code", "tenant_id"})
+    name = "service_orders",
+    uniqueConstraints = @UniqueConstraint(
+        columnNames = { "os_code", "tenant_id" }
+    )
 )
-@Getter @Builder
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ServiceOrderEntity extends BaseJPAEntity {
@@ -58,5 +60,4 @@ public class ServiceOrderEntity extends BaseJPAEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
-
 }
