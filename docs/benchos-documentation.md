@@ -368,7 +368,7 @@ Nas entidades JPA, sempre usar `@Enumerated(EnumType.STRING)`.
 - [x] Definição do modelo de dados
 - [x] Entidades de domínio
 - [x] Entidades JPA
-- [ ] Mappers (domain ↔ JPA)
+- [x] Mappers (domain ↔ JPA)
 - [ ] Repositórios (JpaRepository + impl)
 - [ ] Use cases
 - [ ] Controllers e DTOs REST
