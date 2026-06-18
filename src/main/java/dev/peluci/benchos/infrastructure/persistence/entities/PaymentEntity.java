@@ -8,18 +8,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "payments")
-@Getter @Builder
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentEntity extends BaseJPAEntity {
@@ -47,5 +47,4 @@ public class PaymentEntity extends BaseJPAEntity {
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
-
 }

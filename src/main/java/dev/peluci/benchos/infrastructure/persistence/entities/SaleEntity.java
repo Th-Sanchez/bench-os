@@ -3,18 +3,18 @@ package dev.peluci.benchos.infrastructure.persistence.entities;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "sales")
-@Getter @Builder
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class SaleEntity extends BaseJPAEntity {
@@ -36,5 +36,4 @@ public class SaleEntity extends BaseJPAEntity {
 
     @Column(name = "sold_at", nullable = false)
     private LocalDateTime soldAt;
-
 }

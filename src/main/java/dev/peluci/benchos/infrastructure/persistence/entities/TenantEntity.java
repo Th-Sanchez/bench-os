@@ -4,13 +4,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "tenants")
-@Getter @Builder
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class TenantEntity extends BaseJPAEntity {
@@ -41,5 +42,4 @@ public class TenantEntity extends BaseJPAEntity {
 
     @Column(name = "zip_code", nullable = false)
     private String zipCode;
-
 }

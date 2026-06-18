@@ -7,16 +7,21 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.UUID;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = {"email", "tenant_id"}))
-@Getter @Builder
+@Table(
+    name = "users",
+    uniqueConstraints = @UniqueConstraint(
+        columnNames = { "email", "tenant_id" }
+    )
+)
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserEntity extends BaseJPAEntity {
@@ -39,5 +44,4 @@ public class UserEntity extends BaseJPAEntity {
 
     @Column(name = "first_login", nullable = false)
     private boolean firstLogin;
-
 }

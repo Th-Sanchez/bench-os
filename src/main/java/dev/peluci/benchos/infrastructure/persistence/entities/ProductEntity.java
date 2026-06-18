@@ -3,17 +3,17 @@ package dev.peluci.benchos.infrastructure.persistence.entities;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "products")
-@Getter @Builder
+@Getter
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductEntity extends BaseJPAEntity {
@@ -29,5 +29,4 @@ public class ProductEntity extends BaseJPAEntity {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
-
 }
