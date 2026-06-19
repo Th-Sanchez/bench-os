@@ -15,10 +15,10 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
-    name = "users",
-    uniqueConstraints = @UniqueConstraint(
-        columnNames = { "email", "tenant_id" }
-    )
+        name = "users",
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = { "email", "tenant_id" }
+        )
 )
 @Getter
 @SuperBuilder
