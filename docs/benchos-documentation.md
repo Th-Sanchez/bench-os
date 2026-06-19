@@ -369,7 +369,7 @@ Nas entidades JPA, sempre usar `@Enumerated(EnumType.STRING)`.
 - [x] Entidades de domínio
 - [x] Entidades JPA
 - [x] Mappers (domain ↔ JPA)
-- [ ] Repositórios (JpaRepository + impl)
+- [x] Repositórios (JpaRepository + impl)
 - [ ] Use cases
 - [ ] Controllers e DTOs REST
 - [ ] Autenticação JWT
