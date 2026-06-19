@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Product;
 import dev.peluci.benchos.infrastructure.persistence.entities.ProductEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ProductMapper {
 
     public Product toDomain(ProductEntity entity) {

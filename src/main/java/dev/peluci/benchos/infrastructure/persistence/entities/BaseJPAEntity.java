@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -27,6 +28,7 @@ public abstract class BaseJPAEntity {
     private UUID id;
 
     @Column(nullable = false)
+    @Default
     private boolean active = true;
 
     @CreatedDate

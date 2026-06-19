@@ -16,10 +16,10 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
-    name = "service_orders",
-    uniqueConstraints = @UniqueConstraint(
-        columnNames = { "os_code", "tenant_id" }
-    )
+        name = "service_orders",
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = { "os_code", "tenant_id" }
+        )
 )
 @Getter
 @SuperBuilder

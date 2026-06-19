@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Sale;
 import dev.peluci.benchos.infrastructure.persistence.entities.SaleEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SaleMapper {
 
     public Sale toDomain(SaleEntity entity) {

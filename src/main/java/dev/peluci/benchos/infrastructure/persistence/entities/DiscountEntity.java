@@ -25,10 +25,10 @@ public class DiscountEntity extends BaseJPAEntity {
     private UUID serviceOrderId;
 
     @Column(
-        name = "requested_amount",
-        nullable = false,
-        precision = 10,
-        scale = 2
+            name = "requested_amount",
+            nullable = false,
+            precision = 10,
+            scale = 2
     )
     private BigDecimal requestedAmount;
 
