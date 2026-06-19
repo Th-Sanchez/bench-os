@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Payment;
 import dev.peluci.benchos.infrastructure.persistence.entities.PaymentEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class PaymentMapper {
 
     public Payment toDomain(PaymentEntity entity) {

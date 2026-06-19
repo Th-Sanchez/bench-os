@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Tenant;
 import dev.peluci.benchos.infrastructure.persistence.entities.TenantEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TenantMapper {
 
     public Tenant toDomain(TenantEntity entity) {

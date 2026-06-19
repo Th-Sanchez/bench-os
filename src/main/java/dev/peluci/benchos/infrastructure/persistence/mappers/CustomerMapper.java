@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Customer;
 import dev.peluci.benchos.infrastructure.persistence.entities.CustomerEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class CustomerMapper {
 
     public Customer toDomain(CustomerEntity entity) {

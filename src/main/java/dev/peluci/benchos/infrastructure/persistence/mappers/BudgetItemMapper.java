@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.BudgetItem;
 import dev.peluci.benchos.infrastructure.persistence.entities.BudgetItemEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class BudgetItemMapper {
 
     public BudgetItem toDomain(BudgetItemEntity entity) {

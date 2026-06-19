@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.ServiceOrder;
 import dev.peluci.benchos.infrastructure.persistence.entities.ServiceOrderEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ServiceOrderMapper {
 
     public ServiceOrder toDomain(ServiceOrderEntity entity) {

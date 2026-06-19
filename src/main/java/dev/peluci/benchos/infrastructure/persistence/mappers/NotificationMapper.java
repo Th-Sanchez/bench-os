@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.Notification;
 import dev.peluci.benchos.infrastructure.persistence.entities.NotificationEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class NotificationMapper {
 
     public Notification toDomain(NotificationEntity entity) {

@@ -2,7 +2,9 @@ package dev.peluci.benchos.infrastructure.persistence.mappers;
 
 import dev.peluci.benchos.domain.entities.User;
 import dev.peluci.benchos.infrastructure.persistence.entities.UserEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public class UserMapper {
 
     public User toDomain(UserEntity entity) {

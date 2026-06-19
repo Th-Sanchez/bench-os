@@ -6,7 +6,9 @@ import java.time.DayOfWeek;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TenantConfigMapper {
 
     private String serializeWorkingDays(List<DayOfWeek> workingDays) {
