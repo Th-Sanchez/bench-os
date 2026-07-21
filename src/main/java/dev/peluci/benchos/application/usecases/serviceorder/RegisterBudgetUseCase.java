@@ -1,7 +1,5 @@
 package dev.peluci.benchos.application.usecases.serviceorder;
 
-import dev.peluci.benchos.domain.entities.ServiceOrder;
-
 /**
  * RegisterBudgetUseCase
  *
