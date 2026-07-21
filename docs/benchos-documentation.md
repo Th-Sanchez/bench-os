@@ -75,7 +75,7 @@ Orçamento (próximo dia útil)
 - Limite máximo de OS por dia configurável por tenant (padrão: 20)
 - Prazo após aprovação configurável por tenant (padrão: 3 dias úteis)
 - Dias de funcionamento configuráveis por tenant
-- Cliente pode solicitar desconto; aprovação fica a critério do técnico
+- Técnico pode dar desconto para o cliente
 - Descarte autorizado pelo cliente é registrado na OS
 - Pagamento aceito: dinheiro, débito, crédito à vista e PIX
 - Pagamento pode ser via gateway integrado ou registrado manualmente
