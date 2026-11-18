@@ -33,9 +33,3 @@ build/
 ### VS Code ###
 .vscode/
 
-### Zed ###
-.zed/
-
-### AI Instructions ###
-.agents/
-AGENTS.md
