@@ -28,5 +28,6 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_user_email UNIQUE (email),
-    CONSTRAINT ck_user_role CHECK (role IN ('OWNER', 'ATTENDANT', 'TECHNICIAN'))
+    CONSTRAINT ck_user_role CHECK (role IN ('OWNER', 'ATTENDANT', 'TECHNICIAN')),
+    CONSTRAINT fk_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants (id)
 );
