@@ -1,9 +1,9 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:17-alpine
     container_name: bench-os-postgres
     environment:
-      POSTGRES_DB: bench-os-db
+      POSTGRES_DB: ${DATASOURCE_DB:-bench-os-db}
       POSTGRES_USER: ${DATASOURCE_USER:-bench_os}
       POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD:-bench_os}
     ports:

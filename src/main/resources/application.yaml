@@ -1,3 +1,18 @@
 spring:
   application:
     name: BenchOS
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/bench-os-db}
+    username: ${DATASOURCE_USER:bench_os}
+    password: ${DATASOURCE_PASSWORD:bench_os}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
