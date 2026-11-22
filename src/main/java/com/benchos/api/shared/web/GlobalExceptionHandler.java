@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -61,7 +62,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthentication(AuthenticationException ex) {
-        return buildProblem(HttpStatus.UNAUTHORIZED, "Unauthorized", "unauthorized", "Authentication is required");
+        String detail = ex instanceof BadCredentialsException
+                ? "Invalid email or password"
+                : "Authentication is required";
+        return buildProblem(HttpStatus.UNAUTHORIZED, "Unauthorized", "unauthorized", detail);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
