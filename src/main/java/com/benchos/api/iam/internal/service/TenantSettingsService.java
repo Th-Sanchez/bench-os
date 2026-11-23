@@ -38,7 +38,10 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getDefaultLaborCost(),
                 settings.getDefaultEstimatedDays(),
                 settings.getAbandonmentDays(),
-                settings.getWhatsappQuoteTemplate()
+                settings.getWhatsappIntakeTemplate(),
+                settings.getWhatsappQuoteTemplate(),
+                settings.getWhatsappReadyTemplate(),
+                settings.getCustomApplianceTypeList()
         );
     }
 
@@ -47,6 +50,14 @@ public class TenantSettingsService implements TenantSettingsQuery {
     public String getShopName(UUID tenantId) {
         return tenantRepository.findById(tenantId)
                 .map(Tenant::getName)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getShopPhone(UUID tenantId) {
+        return tenantRepository.findById(tenantId)
+                .map(Tenant::getPhone)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
     }
 
@@ -64,8 +75,26 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.defaultLaborCost(),
                 request.defaultEstimatedDays(),
                 request.abandonmentDays(),
-                request.whatsappQuoteTemplate()
+                request.whatsappIntakeTemplate(),
+                request.whatsappQuoteTemplate(),
+                request.whatsappReadyTemplate()
         );
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse addCustomApplianceType(String name) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.addCustomApplianceType(name);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse removeCustomApplianceType(String name) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.removeCustomApplianceType(name);
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
 

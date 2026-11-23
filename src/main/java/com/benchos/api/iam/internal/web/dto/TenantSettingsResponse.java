@@ -3,6 +3,7 @@ package com.benchos.api.iam.internal.web.dto;
 import com.benchos.api.iam.internal.entity.TenantSettings;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record TenantSettingsResponse(
@@ -10,7 +11,10 @@ public record TenantSettingsResponse(
         BigDecimal defaultLaborCost,
         int defaultEstimatedDays,
         int abandonmentDays,
-        String whatsappQuoteTemplate
+        String whatsappIntakeTemplate,
+        String whatsappQuoteTemplate,
+        String whatsappReadyTemplate,
+        List<String> customApplianceTypes
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -18,7 +22,10 @@ public record TenantSettingsResponse(
                 settings.getDefaultLaborCost(),
                 settings.getDefaultEstimatedDays(),
                 settings.getAbandonmentDays(),
-                settings.getWhatsappQuoteTemplate()
+                settings.getWhatsappIntakeTemplate(),
+                settings.getWhatsappQuoteTemplate(),
+                settings.getWhatsappReadyTemplate(),
+                settings.getCustomApplianceTypeList()
         );
     }
 }

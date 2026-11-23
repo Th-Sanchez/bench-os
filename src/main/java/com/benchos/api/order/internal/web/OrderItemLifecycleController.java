@@ -29,7 +29,7 @@ public class OrderItemLifecycleController {
     }
 
     @PatchMapping("/quote")
-    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    @PreAuthorize("hasAnyRole('OWNER', 'TECHNICIAN')")
     public ServiceOrderItemResponse updateQuote(
             @PathVariable UUID orderId,
             @PathVariable UUID itemId,

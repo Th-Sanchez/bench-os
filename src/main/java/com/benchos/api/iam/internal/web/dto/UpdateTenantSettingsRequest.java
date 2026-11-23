@@ -11,6 +11,8 @@ public record UpdateTenantSettingsRequest(
         @NotNull @PositiveOrZero @Digits(integer = 8, fraction = 2) BigDecimal defaultLaborCost,
         @NotNull @Min(0) Integer defaultEstimatedDays,
         @NotNull @Min(1) Integer abandonmentDays,
-        String whatsappQuoteTemplate
+        String whatsappQuoteTemplate,
+        String whatsappIntakeTemplate,
+        String whatsappReadyTemplate
 ) {
 }

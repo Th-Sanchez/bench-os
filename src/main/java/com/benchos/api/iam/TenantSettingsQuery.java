@@ -11,4 +11,6 @@ public interface TenantSettingsQuery {
     TenantSettingsSnapshot getSettings(UUID tenantId);
 
     String getShopName(UUID tenantId);
+
+    String getShopPhone(UUID tenantId);
 }

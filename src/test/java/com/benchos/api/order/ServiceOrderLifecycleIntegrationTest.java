@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -167,7 +168,7 @@ class ServiceOrderLifecycleIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode waJson = objectMapper.readTree(waResult.getResponse().getContentAsString());
-        String expectedTrackingUrl = "https://app.benchos.com/track/" + publicToken;
+        String expectedTrackingUrl = "http://localhost:8080/track/" + publicToken;
         assertThat(waJson.get("message").asString())
                 .contains("Maria Silva")
                 .contains("Microwave Electrolux MEF41")
@@ -365,6 +366,231 @@ class ServiceOrderLifecycleIntegrationTest {
         // Invalid transition out of CANCELLED -> 422
         transition(shop.token(), orderId, cancelItemId, "DIAGNOSING", null)
                 .andExpect(status().is(422));
+    }
+
+    @Test
+    void allowsPublicWebTrackingPageAndCustomerQuoteApprovalOrRejectionWithoutAuth() throws Exception {
+        RegisteredShop shop = registerShop(
+                "Oficina Publica", "44555666000177", "11988887777",
+                "Owner Public", "owner.public.approve@benchos.com", "StrongPass123!"
+        );
+        UUID customerId = createCustomer(shop.token(), "Joao Cliente", "11977776666");
+        JsonNode order = createOrder(shop.token(), customerId, null, List.of(
+                Map.of("applianceType", "Microwave", "brand", "Electrolux", "voltage", "V110", "reportedIssue", "Not heating"),
+                Map.of("applianceType", "Blender", "brand", "Philco", "voltage", "V110", "reportedIssue", "Burnt smell")
+        ));
+
+        UUID orderId = UUID.fromString(order.get("id").asString());
+        UUID publicToken = UUID.fromString(order.get("publicToken").asString());
+        UUID item1Id = UUID.fromString(order.get("items").get(0).get("id").asString());
+        UUID item2Id = UUID.fromString(order.get("items").get(1).get("id").asString());
+
+        // Public HTML tracking page renders without authentication
+        mockMvc.perform(get("/track/{publicToken}", publicToken))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Acompanhamento de reparo")));
+
+        // Move both items to QUOTE_SENT
+        transition(shop.token(), orderId, item1Id, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(shop.token(), orderId, item1Id, "Capacitor", "80.00", "40.00", "0.00", 90).andExpect(status().isOk());
+        transition(shop.token(), orderId, item1Id, "QUOTE_SENT", null).andExpect(status().isOk());
+
+        transition(shop.token(), orderId, item2Id, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(shop.token(), orderId, item2Id, "Motor burnt", "80.00", "90.00", "0.00", 90).andExpect(status().isOk());
+        transition(shop.token(), orderId, item2Id, "QUOTE_SENT", null).andExpect(status().isOk());
+
+        // Customer approves item 1 anonymously via public link
+        mockMvc.perform(post("/api/v1/public/orders/{publicToken}/items/1/approve", publicToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shopPhone").value("11988887777"))
+                .andExpect(jsonPath("$.items[0].status").value("APPROVED"))
+                .andExpect(jsonPath("$.items[0].approvedAt").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].estimatedCompletionDate").isNotEmpty());
+
+        // Duplicate decision on already-approved item -> 422
+        mockMvc.perform(post("/api/v1/public/orders/{publicToken}/items/1/reject", publicToken))
+                .andExpect(status().is(422));
+
+        // Customer rejects item 2 anonymously via public link
+        mockMvc.perform(post("/api/v1/public/orders/{publicToken}/items/2/reject", publicToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[1].status").value("REJECTED"));
+    }
+
+    @Test
+    void blocksAttendantFromTechnicalQuoteAndStatusTransitionsWhileAllowingCounterFlow() throws Exception {
+        RegisteredShop shop = registerShop(
+                "Oficina RBAC", "55666777000188", "11966665555",
+                "Owner Rbac", "owner.rbac.order@benchos.com", "StrongPass123!"
+        );
+
+        // Create ATTENDANT and TECHNICIAN users
+        String attendantToken = createUserAndLogin(shop.token(), "Ana Atendente", "ana.rbac.order@benchos.com", "StrongPass123!", "ATTENDANT");
+        String techToken = createUserAndLogin(shop.token(), "Lucas Tecnico", "lucas.rbac.order@benchos.com", "StrongPass123!", "TECHNICIAN");
+
+        UUID customerId = createCustomer(attendantToken, "Carlos Cliente", "11955554444");
+
+        // Attendant CAN create orders
+        JsonNode order = createOrder(attendantToken, customerId, null, List.of(
+                Map.of("applianceType", "Air Fryer", "brand", "Mondial", "voltage", "V110", "reportedIssue", "No heat")
+        ));
+        UUID orderId = UUID.fromString(order.get("id").asString());
+        UUID itemId = UUID.fromString(order.get("items").get(0).get("id").asString());
+
+        // Attendant CANNOT start diagnosis or edit quote -> 403
+        transition(attendantToken, orderId, itemId, "DIAGNOSING", null).andExpect(status().isForbidden());
+
+        // Technician CAN start diagnosis, update quote, and send quote
+        transition(techToken, orderId, itemId, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(attendantToken, orderId, itemId, "Should fail", "80.00", "20.00", "0.00", 90).andExpect(status().isForbidden());
+        updateQuote(techToken, orderId, itemId, "Thermostat", "80.00", "20.00", "0.00", 90).andExpect(status().isOk());
+        transition(attendantToken, orderId, itemId, "QUOTE_SENT", null).andExpect(status().isForbidden());
+        transition(techToken, orderId, itemId, "QUOTE_SENT", null).andExpect(status().isOk());
+
+        // Attendant CAN approve quote (e.g. customer confirmed by phone)
+        transition(attendantToken, orderId, itemId, "APPROVED", null).andExpect(status().isOk());
+
+        // Attendant CANNOT move to technical repair stages or reopen quote -> 403
+        transition(attendantToken, orderId, itemId, "WAITING_PARTS", null).andExpect(status().isForbidden());
+        transition(attendantToken, orderId, itemId, "IN_REPAIR", null).andExpect(status().isForbidden());
+        transition(attendantToken, orderId, itemId, "QUOTE_SENT", null).andExpect(status().isForbidden());
+
+        // Technician completes repair
+        transition(techToken, orderId, itemId, "IN_REPAIR", null).andExpect(status().isOk());
+        transition(attendantToken, orderId, itemId, "READY_FOR_PICKUP", null).andExpect(status().isForbidden());
+        transition(techToken, orderId, itemId, "READY_FOR_PICKUP", null).andExpect(status().isOk());
+
+        // Attendant CAN deliver and record payment
+        mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/deliver", orderId, itemId)
+                        .header("Authorization", "Bearer " + attendantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "payments", List.of(Map.of("paymentMethod", "PIX", "amount", new BigDecimal("100.00")))
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"));
+    }
+
+    @Test
+    void generatesConsolidatedOrderWhatsappMessagesByStageAndManagesCustomApplianceTypes() throws Exception {
+        RegisteredShop shop = registerShop(
+                "Oficina Consolidada", "66777888000199", "11944443333",
+                "Owner Consolidado", "owner.consolidated@benchos.com", "StrongPass123!"
+        );
+
+        // Add & verify custom appliance type on tenant settings
+        mockMvc.perform(post("/api/v1/tenant/settings/appliance-types")
+                        .header("Authorization", "Bearer " + shop.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "Cafeteira Expresso"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customApplianceTypes[0]").value("Cafeteira Expresso"));
+
+        // Configure 3 WhatsApp templates (INTAKE, QUOTE, READY)
+        mockMvc.perform(put("/api/v1/tenant/settings")
+                        .header("Authorization", "Bearer " + shop.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "defaultLaborCost", new BigDecimal("80.00"),
+                                "defaultEstimatedDays", 3,
+                                "abandonmentDays", 180,
+                                "whatsappIntakeTemplate", "Entrada OS #{orderNumber} para {customerName}:\n{appliances}\n{trackingUrl}",
+                                "whatsappQuoteTemplate", "Orcamento OS #{orderNumber} ({totalPrice}):\n{appliances}\n{trackingUrl}",
+                                "whatsappReadyTemplate", "Pronto OS #{orderNumber} ({totalPrice}):\n{appliances}\n{trackingUrl}"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.whatsappIntakeTemplate").value("Entrada OS #{orderNumber} para {customerName}:\n{appliances}\n{trackingUrl}"))
+                .andExpect(jsonPath("$.whatsappReadyTemplate").value("Pronto OS #{orderNumber} ({totalPrice}):\n{appliances}\n{trackingUrl}"));
+
+        UUID customerId = createCustomer(shop.token(), "Pedro Souza", "11933332222");
+        JsonNode order = createOrder(shop.token(), customerId, null, List.of(
+                Map.of("applianceType", "Cafeteira Expresso", "brand", "Oster", "voltage", "V110", "reportedIssue", "Not heating"),
+                Map.of("applianceType", "Air Fryer", "brand", "Mondial", "voltage", "V110", "reportedIssue", "Timer broken")
+        ));
+        UUID orderId = UUID.fromString(order.get("id").asString());
+        UUID item1Id = UUID.fromString(order.get("items").get(0).get("id").asString());
+        UUID item2Id = UUID.fromString(order.get("items").get(1).get("id").asString());
+
+        // INTAKE consolidated message includes BOTH appliances
+        MvcResult intakeRes = mockMvc.perform(get("/api/v1/orders/{id}/whatsapp-link", orderId)
+                        .param("stage", "INTAKE")
+                        .header("Authorization", "Bearer " + shop.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String intakeMsg = objectMapper.readTree(intakeRes.getResponse().getContentAsString()).get("message").asString();
+        assertThat(intakeMsg)
+                .contains("Entrada OS #1001 para Pedro Souza:")
+                .contains("#1001-1 Cafeteira Expresso Oster")
+                .contains("#1001-2 Air Fryer Mondial");
+
+        // Update quotes and check QUOTE consolidated message with summed total
+        transition(shop.token(), orderId, item1Id, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(shop.token(), orderId, item1Id, "Pump", "80.00", "70.00", "0.00", 90).andExpect(status().isOk());
+        transition(shop.token(), orderId, item1Id, "QUOTE_SENT", null).andExpect(status().isOk());
+
+        transition(shop.token(), orderId, item2Id, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(shop.token(), orderId, item2Id, "Timer", "80.00", "20.00", "0.00", 90).andExpect(status().isOk());
+        transition(shop.token(), orderId, item2Id, "QUOTE_SENT", null).andExpect(status().isOk());
+
+        MvcResult quoteRes = mockMvc.perform(get("/api/v1/orders/{id}/whatsapp-link", orderId)
+                        .param("stage", "QUOTE")
+                        .header("Authorization", "Bearer " + shop.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String quoteMsg = objectMapper.readTree(quoteRes.getResponse().getContentAsString()).get("message").asString();
+        assertThat(quoteMsg)
+                .contains("Orcamento OS #1001 (R$ 250,00):")
+                .contains("#1001-1 Cafeteira Expresso Oster — R$ 150,00")
+                .contains("#1001-2 Air Fryer Mondial — R$ 100,00");
+
+        // Move item 1 to READY_FOR_PICKUP and check READY consolidated message
+        transition(shop.token(), orderId, item1Id, "APPROVED", null).andExpect(status().isOk());
+        transition(shop.token(), orderId, item1Id, "IN_REPAIR", null).andExpect(status().isOk());
+        transition(shop.token(), orderId, item1Id, "READY_FOR_PICKUP", null).andExpect(status().isOk());
+
+        MvcResult readyRes = mockMvc.perform(get("/api/v1/orders/{id}/whatsapp-link", orderId)
+                        .param("stage", "READY")
+                        .header("Authorization", "Bearer " + shop.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String readyMsg = objectMapper.readTree(readyRes.getResponse().getContentAsString()).get("message").asString();
+        assertThat(readyMsg)
+                .contains("Pronto OS #1001 (R$ 250,00):")
+                .contains("#1001-1 Cafeteira Expresso Oster — Pronto p/ retirada (R$ 150,00)")
+                .contains("#1001-2 Air Fryer Mondial — Em andamento");
+
+        // Remove custom appliance type
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/tenant/settings/appliance-types")
+                        .param("name", "Cafeteira Expresso")
+                        .header("Authorization", "Bearer " + shop.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customApplianceTypes").isEmpty());
+    }
+
+    private String createUserAndLogin(String ownerToken, String name, String email, String password, String role) throws Exception {
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", name,
+                                "email", email,
+                                "password", password,
+                                "role", role
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", password
+                        ))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper.readTree(loginResult.getResponse().getContentAsString()).get("accessToken").asString();
     }
 
     private org.springframework.test.web.servlet.ResultActions updateQuote(

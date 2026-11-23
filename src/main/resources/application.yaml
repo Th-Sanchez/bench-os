@@ -57,7 +57,7 @@ benchos:
     cors:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
   public-tracking:
-    base-url: ${PUBLIC_TRACKING_BASE_URL:https://app.benchos.com/track}
+    base-url: ${PUBLIC_TRACKING_BASE_URL:http://localhost:8080/track}
   storage:
     endpoint: ${STORAGE_ENDPOINT:https://r2.local.benchos.test}
     region: ${STORAGE_REGION:auto}

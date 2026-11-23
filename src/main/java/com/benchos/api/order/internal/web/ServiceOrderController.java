@@ -1,9 +1,12 @@
 package com.benchos.api.order.internal.web;
 
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.WhatsappMessageStage;
+import com.benchos.api.order.internal.service.OrderItemLifecycleService;
 import com.benchos.api.order.internal.service.ServiceOrderService;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
+import com.benchos.api.order.internal.web.dto.WhatsappLinkResponse;
 import com.benchos.api.shared.web.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,9 +27,14 @@ import java.util.UUID;
 public class ServiceOrderController {
 
     private final ServiceOrderService serviceOrderService;
+    private final OrderItemLifecycleService lifecycleService;
 
-    public ServiceOrderController(ServiceOrderService serviceOrderService) {
+    public ServiceOrderController(
+            ServiceOrderService serviceOrderService,
+            OrderItemLifecycleService lifecycleService
+    ) {
         this.serviceOrderService = serviceOrderService;
+        this.lifecycleService = lifecycleService;
     }
 
     @PostMapping
@@ -52,5 +60,14 @@ public class ServiceOrderController {
     @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
     public ServiceOrderResponse getOrder(@PathVariable UUID id) {
         return serviceOrderService.getOrder(id);
+    }
+
+    @GetMapping("/{id}/whatsapp-link")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public WhatsappLinkResponse getOrderWhatsappLink(
+            @PathVariable UUID id,
+            @RequestParam(required = false) WhatsappMessageStage stage
+    ) {
+        return lifecycleService.generateOrderWhatsappLink(id, stage);
     }
 }

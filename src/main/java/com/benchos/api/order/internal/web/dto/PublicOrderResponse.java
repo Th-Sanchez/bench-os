@@ -13,6 +13,7 @@ import java.util.UUID;
  */
 public record PublicOrderResponse(
         String shopName,
+        String shopPhone,
         long orderNumber,
         Instant createdAt,
         List<PublicOrderItemResponse> items
@@ -20,6 +21,7 @@ public record PublicOrderResponse(
     public static PublicOrderResponse from(
             ServiceOrder order,
             String shopName,
+            String shopPhone,
             Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId
     ) {
         List<PublicOrderItemResponse> itemResponses = order.getItems().stream()
@@ -31,6 +33,7 @@ public record PublicOrderResponse(
                 .toList();
         return new PublicOrderResponse(
                 shopName,
+                shopPhone,
                 order.getOrderNumber(),
                 order.getCreatedAt(),
                 itemResponses
