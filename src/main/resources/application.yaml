@@ -59,11 +59,12 @@ benchos:
   public-tracking:
     base-url: ${PUBLIC_TRACKING_BASE_URL:http://localhost:8080/track}
   storage:
-    endpoint: ${STORAGE_ENDPOINT:https://r2.local.benchos.test}
-    region: ${STORAGE_REGION:auto}
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    region: ${STORAGE_REGION:us-east-1}
     bucket: ${STORAGE_BUCKET:benchos-media}
-    access-key: ${STORAGE_ACCESS_KEY:benchos-local-dev-access-key}
-    secret-key: ${STORAGE_SECRET_KEY:benchos-local-dev-secret-key}
+    access-key: ${STORAGE_ACCESS_KEY:benchos_storage}
+    secret-key: ${STORAGE_SECRET_KEY:benchos_storage_secret}
     upload-url-ttl: ${STORAGE_UPLOAD_URL_TTL:10m}
     download-url-ttl: ${STORAGE_DOWNLOAD_URL_TTL:1h}
     path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
+    auto-create-bucket: ${STORAGE_AUTO_CREATE_BUCKET:true}
