@@ -6,6 +6,7 @@ import com.benchos.api.order.internal.entity.ServiceOrderItem;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Sanitized customer-facing view of a service order item.
@@ -24,9 +25,14 @@ public record PublicOrderItemResponse(
         Instant approvedAt,
         Instant finishedAt,
         Instant deliveredAt,
-        Instant discardedAt
+        Instant discardedAt,
+        List<PublicOrderItemPhotoResponse> photos
 ) {
-    public static PublicOrderItemResponse from(ServiceOrderItem item, long orderNumber) {
+    public static PublicOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            List<PublicOrderItemPhotoResponse> photos
+    ) {
         return new PublicOrderItemResponse(
                 item.getItemIndex(),
                 orderNumber + "-" + item.getItemIndex(),
@@ -41,7 +47,8 @@ public record PublicOrderItemResponse(
                 item.getApprovedAt(),
                 item.getFinishedAt(),
                 item.getDeliveredAt(),
-                item.getDiscardedAt()
+                item.getDiscardedAt(),
+                photos
         );
     }
 }

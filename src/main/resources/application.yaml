@@ -27,3 +27,12 @@ benchos:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
   public-tracking:
     base-url: ${PUBLIC_TRACKING_BASE_URL:https://app.benchos.com/track}
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:https://r2.local.benchos.test}
+    region: ${STORAGE_REGION:auto}
+    bucket: ${STORAGE_BUCKET:benchos-media}
+    access-key: ${STORAGE_ACCESS_KEY:benchos-local-dev-access-key}
+    secret-key: ${STORAGE_SECRET_KEY:benchos-local-dev-secret-key}
+    upload-url-ttl: ${STORAGE_UPLOAD_URL_TTL:10m}
+    download-url-ttl: ${STORAGE_DOWNLOAD_URL_TTL:1h}
+    path-style-access: ${STORAGE_PATH_STYLE_ACCESS:true}
