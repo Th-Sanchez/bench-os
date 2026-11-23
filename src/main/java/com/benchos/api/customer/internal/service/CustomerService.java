@@ -13,9 +13,13 @@ import com.benchos.api.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class CustomerService implements CustomerQuery {
@@ -30,12 +34,28 @@ public class CustomerService implements CustomerQuery {
     @Transactional(readOnly = true)
     public Optional<CustomerSnapshot> findActiveById(UUID customerId, UUID tenantId) {
         return customerRepository.findByIdAndTenantIdAndDeletedAtIsNull(customerId, tenantId)
-                .map(customer -> new CustomerSnapshot(
-                        customer.getId(),
-                        customer.getTenantId(),
-                        customer.getName(),
-                        customer.getPhone()
-                ));
+                .map(CustomerService::toSnapshot);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, CustomerSnapshot> findAllByIds(Collection<UUID> customerIds, UUID tenantId) {
+        if (customerIds == null || customerIds.isEmpty()) {
+            return Map.of();
+        }
+        return customerRepository.findAllByIdInAndTenantId(customerIds, tenantId)
+                .stream()
+                .map(CustomerService::toSnapshot)
+                .collect(Collectors.toMap(CustomerSnapshot::id, Function.identity()));
+    }
+
+    private static CustomerSnapshot toSnapshot(Customer customer) {
+        return new CustomerSnapshot(
+                customer.getId(),
+                customer.getTenantId(),
+                customer.getName(),
+                customer.getPhone()
+        );
     }
 
     @Transactional
