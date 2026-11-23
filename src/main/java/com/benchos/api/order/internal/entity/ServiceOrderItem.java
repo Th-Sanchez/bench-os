@@ -1,0 +1,463 @@
+package com.benchos.api.order.internal.entity;
+
+import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.OrderItemDeliveredEvent;
+import com.benchos.api.order.PaymentPart;
+import com.benchos.api.order.Voltage;
+import com.benchos.api.shared.exception.BusinessRuleException;
+import com.benchos.api.shared.id.UuidV7Generator;
+import com.benchos.api.shared.tenant.TenantAwareEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Entity
+@Table(name = "service_order_items")
+public class ServiceOrderItem extends TenantAwareEntity {
+
+    public static final int DEFAULT_WARRANTY_DAYS = 90;
+    private static final BigDecimal ZERO_AMOUNT = BigDecimal.ZERO.setScale(2);
+
+    @Id
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "service_order_id", nullable = false, updatable = false)
+    private ServiceOrder serviceOrder;
+
+    @Column(name = "item_index", nullable = false, updatable = false)
+    private int itemIndex;
+
+    @Column(name = "appliance_type", nullable = false, length = 80)
+    private String applianceType;
+
+    @Column(nullable = false, length = 80)
+    private String brand;
+
+    @Column(length = 120)
+    private String model;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Voltage voltage;
+
+    @Column(name = "serial_number", length = 100)
+    private String serialNumber;
+
+    @Column(columnDefinition = "TEXT")
+    private String accessories;
+
+    @Column(name = "reported_issue", nullable = false, columnDefinition = "TEXT")
+    private String reportedIssue;
+
+    @Column(name = "technical_diagnosis", columnDefinition = "TEXT")
+    private String technicalDiagnosis;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ItemStatus status;
+
+    @Column(name = "labor_cost", nullable = false, precision = 10, scale = 2)
+    private BigDecimal laborCost;
+
+    @Column(name = "parts_cost", nullable = false, precision = 10, scale = 2)
+    private BigDecimal partsCost;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal discount;
+
+    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalPrice;
+
+    @Column(name = "estimated_completion_date")
+    private LocalDate estimatedCompletionDate;
+
+    @Column(name = "warranty_days", nullable = false)
+    private int warrantyDays;
+
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "finished_at")
+    private Instant finishedAt;
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
+    @Column(name = "discarded_at")
+    private Instant discardedAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    protected ServiceOrderItem() {
+    }
+
+    ServiceOrderItem(
+            UUID tenantId,
+            ServiceOrder serviceOrder,
+            int itemIndex,
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue
+    ) {
+        super(tenantId);
+        Instant now = Instant.now();
+        this.id = UuidV7Generator.next();
+        this.serviceOrder = serviceOrder;
+        this.itemIndex = itemIndex;
+        this.applianceType = applianceType.trim();
+        this.brand = brand.trim();
+        this.model = normalizeOptional(model);
+        this.voltage = voltage;
+        this.serialNumber = normalizeOptional(serialNumber);
+        this.accessories = normalizeOptional(accessories);
+        this.reportedIssue = reportedIssue.trim();
+        this.status = ItemStatus.RECEIVED;
+        this.laborCost = ZERO_AMOUNT;
+        this.partsCost = ZERO_AMOUNT;
+        this.discount = ZERO_AMOUNT;
+        this.totalPrice = ZERO_AMOUNT;
+        this.warrantyDays = DEFAULT_WARRANTY_DAYS;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    public void updateQuote(
+            String technicalDiagnosis,
+            BigDecimal laborCost,
+            BigDecimal partsCost,
+            BigDecimal discount,
+            Integer warrantyDays,
+            Instant now
+    ) {
+        if (this.status.isQuoteLockedAfterApproval()) {
+            throw new BusinessRuleException(
+                    "Quote is locked after approval. Reopen the item to QUOTE_SENT before modifying prices"
+            );
+        }
+        if (!this.status.isQuoteEditable()) {
+            throw new BusinessRuleException(
+                    "Quote can only be updated while item is in DIAGNOSING or QUOTE_SENT status"
+            );
+        }
+
+        BigDecimal scaledLabor = scaleMoney(laborCost, "Labor cost");
+        BigDecimal scaledParts = scaleMoney(partsCost, "Parts cost");
+        BigDecimal scaledDiscount = scaleMoney(discount, "Discount");
+        BigDecimal computedTotal = scaledLabor.add(scaledParts).subtract(scaledDiscount).setScale(2, RoundingMode.HALF_UP);
+
+        if (computedTotal.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessRuleException("Total price cannot be negative");
+        }
+        if (warrantyDays != null && warrantyDays < 0) {
+            throw new BusinessRuleException("Warranty days cannot be negative");
+        }
+
+        this.technicalDiagnosis = normalizeOptional(technicalDiagnosis);
+        this.laborCost = scaledLabor;
+        this.partsCost = scaledParts;
+        this.discount = scaledDiscount;
+        this.totalPrice = computedTotal;
+        if (warrantyDays != null) {
+            this.warrantyDays = warrantyDays;
+        }
+        touch(now);
+    }
+
+    public void transitionTo(
+            ItemStatus targetStatus,
+            LocalDate estimatedCompletionDate,
+            String cancellationReason,
+            Instant now
+    ) {
+        if (targetStatus == null) {
+            throw new BusinessRuleException("Target status is required");
+        }
+        if (targetStatus == ItemStatus.DELIVERED) {
+            throw new BusinessRuleException("Use the delivery endpoint to mark an item as DELIVERED");
+        }
+        if (targetStatus == ItemStatus.DISCARDED) {
+            throw new BusinessRuleException("Use the discard policy transition for DISCARDED status");
+        }
+        if (!this.status.canTransitionTo(targetStatus)) {
+            throw new BusinessRuleException("Invalid status transition from " + this.status + " to " + targetStatus);
+        }
+
+        ItemStatus previousStatus = this.status;
+
+        switch (targetStatus) {
+            case APPROVED -> {
+                this.approvedAt = now;
+                this.estimatedCompletionDate = estimatedCompletionDate;
+            }
+            case QUOTE_SENT -> {
+                if (previousStatus.isQuoteLockedAfterApproval()) {
+                    this.approvedAt = null;
+                    this.estimatedCompletionDate = null;
+                }
+            }
+            case READY_FOR_PICKUP -> this.finishedAt = now;
+            case CANCELLED -> {
+                String normalizedReason = normalizeOptional(cancellationReason);
+                if (normalizedReason == null) {
+                    throw new BusinessRuleException("Cancellation reason is required");
+                }
+                this.cancellationReason = normalizedReason;
+            }
+            default -> {
+                // No additional side effects for DIAGNOSING, WAITING_PARTS, IN_REPAIR, REJECTED
+            }
+        }
+
+        this.status = targetStatus;
+        touch(now);
+    }
+
+    public void markDiscarded(int abandonmentDays, Instant now) {
+        if (!this.status.canTransitionTo(ItemStatus.DISCARDED)) {
+            throw new BusinessRuleException("Only items in READY_FOR_PICKUP or REJECTED status can be discarded");
+        }
+        Instant referenceTimestamp = (this.status == ItemStatus.READY_FOR_PICKUP && this.finishedAt != null)
+                ? this.finishedAt
+                : this.updatedAt;
+        Instant eligibleAt = referenceTimestamp.plus(Duration.ofDays(abandonmentDays));
+        if (now.isBefore(eligibleAt)) {
+            throw new BusinessRuleException(
+                    "Item cannot be discarded before " + abandonmentDays + " days of abandonment"
+            );
+        }
+
+        this.status = ItemStatus.DISCARDED;
+        this.discardedAt = now;
+        touch(now);
+    }
+
+    public Optional<OrderItemDeliveredEvent> deliver(List<PaymentPart> payments, Instant now) {
+        List<PaymentPart> normalizedPayments = payments == null ? List.of() : payments;
+
+        if (this.status == ItemStatus.READY_FOR_PICKUP) {
+            if (this.totalPrice.compareTo(BigDecimal.ZERO) > 0) {
+                if (normalizedPayments.isEmpty()) {
+                    throw new BusinessRuleException("At least one payment part is required to deliver a repaired item");
+                }
+
+                BigDecimal sum = ZERO_AMOUNT;
+                List<PaymentPart> scaledParts = new java.util.ArrayList<>(normalizedPayments.size());
+                for (PaymentPart part : normalizedPayments) {
+                    if (part == null || part.paymentMethod() == null || part.amount() == null) {
+                        throw new BusinessRuleException("Each payment part must specify a payment method and amount");
+                    }
+                    BigDecimal scaledAmount = part.amount().setScale(2, RoundingMode.HALF_UP);
+                    if (scaledAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new BusinessRuleException("Payment part amount must be greater than zero");
+                    }
+                    sum = sum.add(scaledAmount);
+                    scaledParts.add(new PaymentPart(part.paymentMethod(), scaledAmount));
+                }
+
+                if (sum.compareTo(this.totalPrice) != 0) {
+                    throw new BusinessRuleException(
+                            "Sum of payments (" + sum + ") must equal item total price (" + this.totalPrice + ")"
+                    );
+                }
+
+                this.status = ItemStatus.DELIVERED;
+                this.deliveredAt = now;
+                touch(now);
+
+                return Optional.of(new OrderItemDeliveredEvent(
+                        getTenantId(),
+                        this.serviceOrder.getId(),
+                        this.id,
+                        this.serviceOrder.getOrderNumber(),
+                        this.itemIndex,
+                        this.totalPrice,
+                        scaledParts,
+                        now
+                ));
+            }
+
+            if (!normalizedPayments.isEmpty()) {
+                throw new BusinessRuleException("Payments must not be provided when item total price is zero");
+            }
+            this.status = ItemStatus.DELIVERED;
+            this.deliveredAt = now;
+            touch(now);
+            return Optional.empty();
+        }
+
+        if (this.status == ItemStatus.REJECTED) {
+            if (!normalizedPayments.isEmpty()) {
+                throw new BusinessRuleException("Rejected items are delivered without charge and must not include payments");
+            }
+            this.laborCost = ZERO_AMOUNT;
+            this.partsCost = ZERO_AMOUNT;
+            this.discount = ZERO_AMOUNT;
+            this.totalPrice = ZERO_AMOUNT;
+            this.status = ItemStatus.DELIVERED;
+            this.deliveredAt = now;
+            touch(now);
+            return Optional.empty();
+        }
+
+        throw new BusinessRuleException("Only items in READY_FOR_PICKUP or REJECTED status can be delivered");
+    }
+
+    public String getTag() {
+        return serviceOrder.getOrderNumber() + "-" + itemIndex;
+    }
+
+    public String getApplianceDisplayName() {
+        StringBuilder sb = new StringBuilder(applianceType).append(' ').append(brand);
+        if (model != null && !model.isBlank()) {
+            sb.append(' ').append(model);
+        }
+        return sb.toString();
+    }
+
+    private void touch(Instant now) {
+        this.updatedAt = now;
+        this.serviceOrder.touch();
+    }
+
+    private static BigDecimal scaleMoney(BigDecimal value, String fieldName) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessRuleException(fieldName + " must be greater than or equal to zero");
+        }
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public ServiceOrder getServiceOrder() {
+        return serviceOrder;
+    }
+
+    public int getItemIndex() {
+        return itemIndex;
+    }
+
+    public String getApplianceType() {
+        return applianceType;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public Voltage getVoltage() {
+        return voltage;
+    }
+
+    public String getSerialNumber() {
+        return serialNumber;
+    }
+
+    public String getAccessories() {
+        return accessories;
+    }
+
+    public String getReportedIssue() {
+        return reportedIssue;
+    }
+
+    public String getTechnicalDiagnosis() {
+        return technicalDiagnosis;
+    }
+
+    public ItemStatus getStatus() {
+        return status;
+    }
+
+    public BigDecimal getLaborCost() {
+        return laborCost;
+    }
+
+    public BigDecimal getPartsCost() {
+        return partsCost;
+    }
+
+    public BigDecimal getDiscount() {
+        return discount;
+    }
+
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+
+    public LocalDate getEstimatedCompletionDate() {
+        return estimatedCompletionDate;
+    }
+
+    public int getWarrantyDays() {
+        return warrantyDays;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public Instant getFinishedAt() {
+        return finishedAt;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    public Instant getDiscardedAt() {
+        return discardedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+}

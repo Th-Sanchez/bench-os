@@ -1,6 +1,7 @@
 package com.benchos.api.iam;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -11,6 +12,9 @@ public record TenantSettingsSnapshot(
         BigDecimal defaultLaborCost,
         int defaultEstimatedDays,
         int abandonmentDays,
-        String whatsappQuoteTemplate
+        String whatsappIntakeTemplate,
+        String whatsappQuoteTemplate,
+        String whatsappReadyTemplate,
+        List<String> customApplianceTypes
 ) {
 }
