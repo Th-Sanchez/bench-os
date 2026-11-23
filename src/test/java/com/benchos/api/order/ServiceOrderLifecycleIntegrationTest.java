@@ -71,7 +71,10 @@ class ServiceOrderLifecycleIntegrationTest {
     }
 
     private void cleanDatabase() {
+        awaitPendingEventPublications();
         TenantContext.clear();
+        jdbcTemplate.execute("DELETE FROM financial_transactions");
+        jdbcTemplate.execute("DELETE FROM suppliers");
         jdbcTemplate.execute("DELETE FROM event_publication");
         jdbcTemplate.execute("DELETE FROM service_order_items");
         jdbcTemplate.execute("DELETE FROM service_orders");
@@ -80,6 +83,25 @@ class ServiceOrderLifecycleIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users");
         jdbcTemplate.execute("DELETE FROM tenant_settings");
         jdbcTemplate.execute("DELETE FROM tenants");
+    }
+
+    private void awaitPendingEventPublications() {
+        long deadline = System.currentTimeMillis() + 5_000L;
+        while (System.currentTimeMillis() < deadline) {
+            Integer pending = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM event_publication WHERE completion_date IS NULL",
+                    Integer.class
+            );
+            if (pending == null || pending == 0) {
+                return;
+            }
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     @Test
