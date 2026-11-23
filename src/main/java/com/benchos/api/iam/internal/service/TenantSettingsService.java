@@ -2,7 +2,9 @@ package com.benchos.api.iam.internal.service;
 
 import com.benchos.api.iam.TenantSettingsQuery;
 import com.benchos.api.iam.TenantSettingsSnapshot;
+import com.benchos.api.iam.internal.entity.Tenant;
 import com.benchos.api.iam.internal.entity.TenantSettings;
+import com.benchos.api.iam.internal.repository.TenantRepository;
 import com.benchos.api.iam.internal.repository.TenantSettingsRepository;
 import com.benchos.api.iam.internal.web.dto.TenantSettingsResponse;
 import com.benchos.api.iam.internal.web.dto.UpdateTenantSettingsRequest;
@@ -16,9 +18,14 @@ import java.util.UUID;
 @Service
 public class TenantSettingsService implements TenantSettingsQuery {
 
+    private final TenantRepository tenantRepository;
     private final TenantSettingsRepository tenantSettingsRepository;
 
-    public TenantSettingsService(TenantSettingsRepository tenantSettingsRepository) {
+    public TenantSettingsService(
+            TenantRepository tenantRepository,
+            TenantSettingsRepository tenantSettingsRepository
+    ) {
+        this.tenantRepository = tenantRepository;
         this.tenantSettingsRepository = tenantSettingsRepository;
     }
 
@@ -33,6 +40,14 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getAbandonmentDays(),
                 settings.getWhatsappQuoteTemplate()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getShopName(UUID tenantId) {
+        return tenantRepository.findById(tenantId)
+                .map(Tenant::getName)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
     }
 
     @Transactional(readOnly = true)

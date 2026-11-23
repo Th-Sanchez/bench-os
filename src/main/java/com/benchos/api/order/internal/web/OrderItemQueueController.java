@@ -32,4 +32,13 @@ public class OrderItemQueueController {
     ) {
         return serviceOrderService.listBenchQueue(status, tag, page, size);
     }
+
+    @GetMapping("/abandonment-eligible")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public PageResponse<OrderItemQueueResponse> listAbandonmentEligible(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return serviceOrderService.listAbandonmentEligibleItems(page, size);
+    }
 }

@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface TenantSettingsQuery {
 
     TenantSettingsSnapshot getSettings(UUID tenantId);
+
+    String getShopName(UUID tenantId);
 }

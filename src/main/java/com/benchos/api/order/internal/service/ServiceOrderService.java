@@ -2,6 +2,8 @@ package com.benchos.api.order.internal.service;
 
 import com.benchos.api.customer.CustomerQuery;
 import com.benchos.api.customer.CustomerSnapshot;
+import com.benchos.api.iam.TenantSettingsQuery;
+import com.benchos.api.iam.TenantSettingsSnapshot;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
@@ -27,6 +29,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,17 +51,20 @@ public class ServiceOrderService {
     private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final TenantSequenceService tenantSequenceService;
     private final CustomerQuery customerQuery;
+    private final TenantSettingsQuery tenantSettingsQuery;
 
     public ServiceOrderService(
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
             TenantSequenceService tenantSequenceService,
-            CustomerQuery customerQuery
+            CustomerQuery customerQuery,
+            TenantSettingsQuery tenantSettingsQuery
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
         this.tenantSequenceService = tenantSequenceService;
         this.customerQuery = customerQuery;
+        this.tenantSettingsQuery = tenantSettingsQuery;
     }
 
     @Transactional
@@ -206,6 +213,56 @@ public class ServiceOrderService {
             }
 
             return cb.and(predicates.toArray(Predicate[]::new));
+        };
+
+        Page<ServiceOrderItem> itemsPage = serviceOrderItemRepository.findAll(spec, pageable);
+        if (itemsPage.isEmpty()) {
+            return PageResponse.of(List.of(), itemsPage);
+        }
+
+        Set<UUID> customerIds = itemsPage.getContent().stream()
+                .map(item -> item.getServiceOrder().getCustomerId())
+                .collect(Collectors.toSet());
+        Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
+
+        List<OrderItemQueueResponse> responses = itemsPage.getContent().stream()
+                .map(item -> OrderItemQueueResponse.from(
+                        item,
+                        customersById.get(item.getServiceOrder().getCustomerId())
+                ))
+                .toList();
+
+        return PageResponse.of(responses, itemsPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderItemQueueResponse> listAbandonmentEligibleItems(int page, int size) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(tenantId);
+        Instant cutoff = Instant.now().minus(Duration.ofDays(settings.abandonmentDays()));
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                clampPageSize(size),
+                Sort.by(Sort.Order.asc("updatedAt"), Sort.Order.asc("itemIndex"))
+        );
+
+        Specification<ServiceOrderItem> spec = (root, query, cb) -> {
+            Predicate tenantMatch = cb.equal(root.get("tenantId"), tenantId);
+
+            Predicate readyExpired = cb.and(
+                    cb.equal(root.get("status"), ItemStatus.READY_FOR_PICKUP),
+                    cb.lessThanOrEqualTo(
+                            cb.coalesce(root.get("finishedAt"), root.get("updatedAt")),
+                            cutoff
+                    )
+            );
+            Predicate rejectedExpired = cb.and(
+                    cb.equal(root.get("status"), ItemStatus.REJECTED),
+                    cb.lessThanOrEqualTo(root.get("updatedAt"), cutoff)
+            );
+
+            return cb.and(tenantMatch, cb.or(readyExpired, rejectedExpired));
         };
 
         Page<ServiceOrderItem> itemsPage = serviceOrderItemRepository.findAll(spec, pageable);

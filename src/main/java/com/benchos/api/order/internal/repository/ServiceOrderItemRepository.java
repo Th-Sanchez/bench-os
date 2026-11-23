@@ -10,9 +10,13 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderItem, UUID>, JpaSpecificationExecutor<ServiceOrderItem> {
+
+    @EntityGraph(attributePaths = "serviceOrder")
+    Optional<ServiceOrderItem> findByIdAndServiceOrderIdAndTenantId(UUID id, UUID serviceOrderId, UUID tenantId);
 
     List<ServiceOrderItem> findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(
             UUID tenantId,
