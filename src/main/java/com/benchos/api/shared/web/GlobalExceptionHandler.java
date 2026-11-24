@@ -5,6 +5,7 @@ import com.benchos.api.shared.exception.ConflictException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -89,6 +90,10 @@ public class GlobalExceptionHandler {
         problem.setTitle(title);
         problem.setType(URI.create("https://benchos.com/errors/" + errorCode));
         problem.setProperty("timestamp", Instant.now());
+        String requestId = MDC.get(RequestCorrelationFilter.REQUEST_ID_MDC_KEY);
+        if (requestId != null && !requestId.isBlank()) {
+            problem.setProperty("requestId", requestId);
+        }
         return problem;
     }
 }
