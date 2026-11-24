@@ -62,6 +62,10 @@ public class User extends TenantAwareEntity {
         this.active = active;
     }
 
+    public void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public UUID getId() {
         return id;
     }

@@ -2,6 +2,7 @@ package com.benchos.api.iam.internal.web;
 
 import com.benchos.api.iam.internal.service.UserManagementService;
 import com.benchos.api.iam.internal.web.dto.CreateUserRequest;
+import com.benchos.api.iam.internal.web.dto.ResetUserPasswordRequest;
 import com.benchos.api.iam.internal.web.dto.UpdateUserStatusRequest;
 import com.benchos.api.iam.internal.web.dto.UserResponse;
 import jakarta.validation.Valid;
@@ -60,5 +61,14 @@ public class UserController {
             @Valid @RequestBody UpdateUserStatusRequest request
     ) {
         return userManagementService.updateUserStatus(id, request.active());
+    }
+
+    @PatchMapping("/{id}/password")
+    @PreAuthorize("hasRole('OWNER')")
+    public UserResponse resetUserPassword(
+            @PathVariable UUID id,
+            @Valid @RequestBody ResetUserPasswordRequest request
+    ) {
+        return userManagementService.resetUserPassword(id, request.newPassword());
     }
 }
