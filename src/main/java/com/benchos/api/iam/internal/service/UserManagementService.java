@@ -1,6 +1,8 @@
 package com.benchos.api.iam.internal.service;
 
+import com.benchos.api.iam.Role;
 import com.benchos.api.iam.internal.entity.User;
+import com.benchos.api.iam.internal.repository.PasswordResetTokenRepository;
 import com.benchos.api.iam.internal.repository.UserRepository;
 import com.benchos.api.iam.internal.web.dto.CreateUserRequest;
 import com.benchos.api.iam.internal.web.dto.UserResponse;
@@ -13,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,10 +23,16 @@ import java.util.UUID;
 public class UserManagementService {
 
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserManagementService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserManagementService(
+            UserRepository userRepository,
+            PasswordResetTokenRepository passwordResetTokenRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -81,6 +90,23 @@ public class UserManagementService {
         User user = userRepository.findByIdAndTenantId(userId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setActive(active);
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse resetUserPassword(UUID userId, String newPassword) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID currentUserId = SecurityUtils.requireCurrentUserId();
+
+        User user = userRepository.findByIdAndTenantId(userId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() == Role.OWNER && !currentUserId.equals(userId)) {
+            throw new BusinessRuleException("You cannot reset another owner's password");
+        }
+
+        user.updatePasswordHash(passwordEncoder.encode(newPassword));
+        passwordResetTokenRepository.invalidateAllActiveForUser(user.getId(), Instant.now());
         return UserResponse.from(userRepository.save(user));
     }
 }

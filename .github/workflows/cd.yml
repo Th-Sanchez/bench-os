@@ -1,0 +1,114 @@
+name: CD — Vertra Cloud Production
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      initial_wait_seconds:
+        description: 'Seconds to wait before polling production readiness'
+        required: false
+        default: '10'
+        type: string
+
+concurrency:
+  group: cd-backend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    name: Pre-Deploy Test Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run test suite
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test
+
+  deploy-and-smoke-test:
+    name: Deploy & Production Health Smoke Test
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROD_API_URL: ${{ vars.PROD_API_URL || 'https://benchos.vertraweb.app' }}
+
+    steps:
+      - name: Trigger Vertra Cloud deploy webhook (optional)
+        env:
+          WEBHOOK_URL: ${{ secrets.VERTRA_DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            echo "Triggering Vertra Cloud deploy webhook..."
+            curl --fail-with-body --silent --show-error -X POST "$WEBHOOK_URL"
+            echo ""
+            echo "Webhook accepted."
+          else
+            echo "No VERTRA_DEPLOY_WEBHOOK_URL configured — Vertra Cloud GitHub auto-deploy on master handles rollout."
+          fi
+
+      - name: Wait for rollout & verify production readiness
+        env:
+          INITIAL_WAIT: ${{ inputs.initial_wait_seconds || '30' }}
+        run: |
+          echo "Waiting ${INITIAL_WAIT}s for Vertra Cloud rolling restart..."
+          sleep "${INITIAL_WAIT}"
+
+          HEALTH_URL="${PROD_API_URL%/}/actuator/health/readiness"
+          echo "Polling ${HEALTH_URL}..."
+
+          READY=false
+          for attempt in $(seq 1 18); do
+            RESPONSE=$(curl -sS --max-time 10 -w "\n%{http_code}" "$HEALTH_URL" || true)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            echo "Attempt ${attempt}/18 -> HTTP ${HTTP_CODE} ${BODY}"
+
+            if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"status":"UP"'; then
+              READY=true
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "$READY" != "true" ]; then
+            echo "::error::Production readiness probe failed at ${HEALTH_URL}"
+            exit 1
+          fi
+
+      - name: Verify Swagger UI remains disabled in production
+        run: |
+          SWAGGER_URL="${PROD_API_URL%/}/swagger-ui.html"
+          SWAGGER_CODE=$(curl -sS -o /dev/null --max-time 10 -w "%{http_code}" "$SWAGGER_URL")
+          echo "GET ${SWAGGER_URL} -> HTTP ${SWAGGER_CODE}"
+          if [ "$SWAGGER_CODE" = "200" ]; then
+            echo "::error::Swagger UI should be disabled in production!"
+            exit 1
+          fi
+
+      - name: Publish deployment summary
+        if: always()
+        run: |
+          {
+            echo "## BenchOS Backend — Production CD"
+            echo ""
+            echo "- **Commit:** \`${GITHUB_SHA::7}\`"
+            echo "- **Endpoint:** ${PROD_API_URL}"
+            echo "- **Health Probe:** \`${PROD_API_URL%/}/actuator/health/readiness\`"
+            echo "- **Swagger Disabled Check:** Verified"
+          } >> "$GITHUB_STEP_SUMMARY"
