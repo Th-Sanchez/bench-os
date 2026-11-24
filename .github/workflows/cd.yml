@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PROD_API_URL: ${{ vars.PROD_API_URL || 'https://benchos.vertraweb.app' }}
+      PROD_API_URL: ${{ vars.PROD_API_URL || 'https://api.benchos.app.br' }}
 
     steps:
       - name: Checkout repository (full history for SemVer)
