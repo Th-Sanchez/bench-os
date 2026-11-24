@@ -1,8 +1,11 @@
 package com.benchos.api.order.internal.service;
 
+import com.benchos.api.customer.CustomerQuery;
+import com.benchos.api.customer.CustomerSnapshot;
 import com.benchos.api.iam.TenantSettingsQuery;
 import com.benchos.api.iam.TenantSettingsSnapshot;
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.PublicQuoteRespondedEvent;
 import com.benchos.api.order.internal.entity.ItemPhoto;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
@@ -14,6 +17,7 @@ import com.benchos.api.order.internal.web.dto.PublicOrderResponse;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.storage.ObjectStorageService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,20 +36,26 @@ public class PublicOrderService {
     private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final ItemPhotoRepository itemPhotoRepository;
     private final TenantSettingsQuery tenantSettingsQuery;
+    private final CustomerQuery customerQuery;
     private final ObjectStorageService objectStorageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PublicOrderService(
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
             ItemPhotoRepository itemPhotoRepository,
             TenantSettingsQuery tenantSettingsQuery,
-            ObjectStorageService objectStorageService
+            CustomerQuery customerQuery,
+            ObjectStorageService objectStorageService,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
         this.itemPhotoRepository = itemPhotoRepository;
         this.tenantSettingsQuery = tenantSettingsQuery;
+        this.customerQuery = customerQuery;
         this.objectStorageService = objectStorageService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -65,11 +75,13 @@ public class PublicOrderService {
             );
         }
 
+        Instant now = Instant.now();
         TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(order.getTenantId());
         LocalDate estimatedDate = LocalDate.now(ZoneOffset.UTC).plusDays(settings.defaultEstimatedDays());
-        item.transitionTo(ItemStatus.APPROVED, estimatedDate, null, Instant.now());
+        item.transitionTo(ItemStatus.APPROVED, estimatedDate, null, now);
         serviceOrderItemRepository.save(item);
 
+        publishQuoteRespondedEvent(order, item, true, now);
         return buildPublicResponse(order);
     }
 
@@ -84,10 +96,37 @@ public class PublicOrderService {
             );
         }
 
-        item.transitionTo(ItemStatus.REJECTED, null, null, Instant.now());
+        Instant now = Instant.now();
+        item.transitionTo(ItemStatus.REJECTED, null, null, now);
         serviceOrderItemRepository.save(item);
 
+        publishQuoteRespondedEvent(order, item, false, now);
         return buildPublicResponse(order);
+    }
+
+    private void publishQuoteRespondedEvent(
+            ServiceOrder order,
+            ServiceOrderItem item,
+            boolean approved,
+            Instant respondedAt
+    ) {
+        String customerName = customerQuery.findActiveById(order.getCustomerId(), order.getTenantId())
+                .map(CustomerSnapshot::name)
+                .orElse("Cliente");
+
+        eventPublisher.publishEvent(new PublicQuoteRespondedEvent(
+                order.getTenantId(),
+                order.getId(),
+                item.getId(),
+                order.getOrderNumber(),
+                item.getItemIndex(),
+                item.getTag(),
+                item.getApplianceDisplayName(),
+                customerName,
+                approved,
+                item.getTotalPrice(),
+                respondedAt
+        ));
     }
 
     private ServiceOrder findOrderOrThrow(UUID publicToken) {

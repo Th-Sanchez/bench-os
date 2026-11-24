@@ -40,6 +40,13 @@ benchos:
     resend-base-url: ${RESEND_BASE_URL:https://api.resend.com}
     reset-code-ttl: ${MAIL_RESET_CODE_TTL:15m}
     resend-cooldown: ${MAIL_RESEND_COOLDOWN:60s}
+  push:
+    provider: ${PUSH_PROVIDER:expo}
+    expo-endpoint-url: ${EXPO_PUSH_ENDPOINT_URL:https://exp.host/--/api/v2/push/send}
+    expo-access-token: ${EXPO_PUSH_ACCESS_TOKEN:}
+    daily-alerts-enabled: ${PUSH_DAILY_ALERTS_ENABLED:true}
+    daily-alerts-cron: ${PUSH_DAILY_ALERTS_CRON:0 30 8 * * *}
+    daily-alerts-zone: ${PUSH_DAILY_ALERTS_ZONE:America/Sao_Paulo}
 
 logging:
   pattern:
