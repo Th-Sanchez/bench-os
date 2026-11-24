@@ -2,6 +2,7 @@ package com.benchos.api.shared.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -63,6 +64,10 @@ public class SecurityProblemSupport implements AuthenticationEntryPoint, AccessD
         problem.setTitle(title);
         problem.setType(URI.create("https://benchos.com/errors/" + errorCode));
         problem.setProperty("timestamp", Instant.now());
+        String requestId = MDC.get("requestId");
+        if (requestId != null && !requestId.isBlank()) {
+            problem.setProperty("requestId", requestId);
+        }
 
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);

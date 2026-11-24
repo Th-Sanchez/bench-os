@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,12 +27,14 @@ class TenantContextFilterTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
         TenantContext.clear();
+        MDC.clear();
     }
 
     @Test
     void bindsTenantDuringRequestAndClearsAfterCompletion() throws Exception {
+        UUID userId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        AuthenticatedUser principal = new AuthenticatedUser(UUID.randomUUID(), tenantId, "OWNER");
+        AuthenticatedUser principal = new AuthenticatedUser(userId, tenantId, "OWNER");
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
@@ -39,12 +42,22 @@ class TenantContextFilterTest {
         );
 
         AtomicReference<UUID> observedTenant = new AtomicReference<>();
-        FilterChain chain = (req, res) -> observedTenant.set(TenantContext.requireCurrentTenant());
+        AtomicReference<String> observedTenantMdc = new AtomicReference<>();
+        AtomicReference<String> observedUserMdc = new AtomicReference<>();
+        FilterChain chain = (req, res) -> {
+            observedTenant.set(TenantContext.requireCurrentTenant());
+            observedTenantMdc.set(MDC.get(TenantContextFilter.TENANT_ID_MDC_KEY));
+            observedUserMdc.set(MDC.get(TenantContextFilter.USER_ID_MDC_KEY));
+        };
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
 
         assertThat(observedTenant.get()).isEqualTo(tenantId);
+        assertThat(observedTenantMdc.get()).isEqualTo(tenantId.toString());
+        assertThat(observedUserMdc.get()).isEqualTo(userId.toString());
         assertThat(TenantContext.getCurrentTenant()).isEmpty();
+        assertThat(MDC.get(TenantContextFilter.TENANT_ID_MDC_KEY)).isNull();
+        assertThat(MDC.get(TenantContextFilter.USER_ID_MDC_KEY)).isNull();
     }
 
     @Test

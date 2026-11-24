@@ -42,6 +42,8 @@ benchos:
     resend-cooldown: ${MAIL_RESEND_COOLDOWN:60s}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [req=%X{requestId:-none} tenant=%X{tenantId:-public}] %logger{36} : %m%n%wEx"
   level:
     root: INFO
     com.benchos.api: INFO

@@ -12,6 +12,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,11 +23,15 @@ class OperationalEndpointsIntegrationTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+    @Autowired
+    private RequestCorrelationFilter requestCorrelationFilter;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .addFilters(requestCorrelationFilter)
                 .apply(springSecurity())
                 .build();
     }
@@ -35,16 +40,29 @@ class OperationalEndpointsIntegrationTest {
     void exposesPublicHealthProbesWithoutLeakingInternalDetails() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
+                .andExpect(header().exists(RequestCorrelationFilter.REQUEST_ID_HEADER))
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.components").doesNotExist());
 
         mockMvc.perform(get("/actuator/health/liveness"))
                 .andExpect(status().isOk())
+                .andExpect(header().exists(RequestCorrelationFilter.REQUEST_ID_HEADER))
                 .andExpect(jsonPath("$.status").value("UP"));
 
         mockMvc.perform(get("/actuator/health/readiness"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+                .andExpect(header().exists(RequestCorrelationFilter.REQUEST_ID_HEADER))
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist());
+    }
+
+    @Test
+    void includesCorrelationRequestIdInHeaderAndProblemDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/customers")
+                        .header(RequestCorrelationFilter.REQUEST_ID_HEADER, "obs-check-001"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(RequestCorrelationFilter.REQUEST_ID_HEADER, "obs-check-001"))
+                .andExpect(jsonPath("$.requestId").value("obs-check-001"));
     }
 
     @Test
