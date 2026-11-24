@@ -10,13 +10,18 @@ on:
         required: false
         default: '10'
         type: string
+      create_release:
+        description: 'Create SemVer Git Tag & GitHub Release'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: cd-backend-production
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   quality-gate:
@@ -41,7 +46,7 @@ jobs:
           ./mvnw -B test
 
   deploy-and-smoke-test:
-    name: Deploy & Production Health Smoke Test
+    name: Deploy, Smoke Test & SemVer Release
     needs: quality-gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -49,6 +54,11 @@ jobs:
       PROD_API_URL: ${{ vars.PROD_API_URL || 'https://benchos.vertraweb.app' }}
 
     steps:
+      - name: Checkout repository (full history for SemVer)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Trigger Vertra Cloud deploy webhook (optional)
         env:
           WEBHOOK_URL: ${{ secrets.VERTRA_DEPLOY_WEBHOOK_URL }}
@@ -101,12 +111,70 @@ jobs:
             exit 1
           fi
 
+      - name: Tag SemVer release & publish GitHub Release
+        id: release
+        if: ${{ github.event_name == 'push' || inputs.create_release == true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'EOF'
+          import os, re, subprocess
+
+          def run(cmd):
+              return subprocess.check_output(cmd, text=True).strip()
+
+          tags = [t.strip() for t in run(["git", "tag", "--list", "v*.*.*", "--sort=-v:refname"]).splitlines() if t.strip()]
+          last_tag = tags[0] if tags else ""
+
+          base = last_tag.lstrip("v") if last_tag else "1.0.0"
+          maj, min_, pat = [int(x) for x in base.split(".")[:3]]
+
+          git_range = f"{last_tag}..HEAD" if last_tag else "HEAD~10..HEAD"
+          try:
+              raw = run(["git", "log", git_range, "--no-merges", "--format=%s%n%b%n---COMMIT---"])
+          except subprocess.CalledProcessError:
+              raw = run(["git", "log", "--no-merges", "--format=%s%n%b%n---COMMIT---"])
+
+          commits = [c.strip() for c in raw.split("---COMMIT---") if c.strip()]
+          bump = "patch"
+          for msg in commits:
+              subject = msg.splitlines()[0]
+              if re.search(r"BREAKING CHANGE:", msg, re.I) or re.match(r"^[a-z]+(\([^)]+\))?!:", subject):
+                  bump = "major"
+                  break
+              if re.match(r"^(feat|feature)(\([^)]+\))?:", subject, re.I):
+                  bump = "minor"
+
+          if bump == "major":
+              next_ver = f"{maj + 1}.0.0"
+          elif bump == "minor":
+              next_ver = f"{maj}.{min_ + 1}.0"
+          else:
+              next_ver = f"{maj}.{min_}.{pat + 1}"
+
+          tag = f"v{next_ver}"
+          notes = "\n".join(f"- {c.splitlines()[0]}" for c in commits if c.splitlines()) or "- Automated release"
+          with open("/tmp/backend-release-notes.md", "w", encoding="utf-8") as f:
+              f.write(notes + "\n")
+
+          subprocess.check_call(["git", "config", "user.name", "github-actions[bot]"])
+          subprocess.check_call(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
+          subprocess.check_call(["git", "tag", "-a", tag, "-m", f"Release {tag}"])
+          subprocess.check_call(["git", "push", "origin", tag])
+          subprocess.check_call(["gh", "release", "create", tag, "--title", f"BenchOS API {tag}", "--notes-file", "/tmp/backend-release-notes.md"])
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"tag={tag}\n")
+              out.write(f"bump={bump}\n")
+          EOF
+
       - name: Publish deployment summary
         if: always()
         run: |
           {
             echo "## BenchOS Backend — Production CD"
             echo ""
+            echo "- **Release:** \`${{ steps.release.outputs.tag || 'manual check' }}\` (${{ steps.release.outputs.bump || 'no tag' }})"
             echo "- **Commit:** \`${GITHUB_SHA::7}\`"
             echo "- **Endpoint:** ${PROD_API_URL}"
             echo "- **Health Probe:** \`${PROD_API_URL%/}/actuator/health/readiness\`"
