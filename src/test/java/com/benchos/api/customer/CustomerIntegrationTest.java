@@ -269,6 +269,53 @@ class CustomerIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("Roberto Reativado"));
     }
 
+    @Test
+    void batchImportsPhoneContactsDeduplicatingExistingAndInBatchPhonesPerTenant() throws Exception {
+        RegisteredShop shopA = registerShop("Oficina Agenda A", "22233344000111", "11988880001", "Carlos", "agenda-a@shop.com", "MasterPass1!");
+        RegisteredShop shopB = registerShop("Oficina Agenda B", "33344455000122", "11988880002", "Marcos", "agenda-b@shop.com", "MasterPass1!");
+
+        // Pre-existing customer in Shop A
+        createCustomer(shopA.token(), "Maria Existente", "(11) 98888-1111", null, null);
+
+        Map<String, Object> batchPayload = Map.of(
+                "customers", List.of(
+                        Map.of("name", "Maria da Agenda", "phone", "11988881111"),          // duplicate of existing -> skipped
+                        Map.of("name", "Joao Contato", "phone", "(11) 97777-2222"),        // new -> imported
+                        Map.of("name", "Joao Duplicado", "phone", "11 97777-2222"),        // in-batch duplicate -> skipped
+                        Map.of("name", "Ana Contato", "phone", "(21) 96666-3333"),         // new -> imported
+                        Map.of("name", "Numero Curto", "phone", "190")                     // invalid (< 8 digits) -> skipped
+                )
+        );
+
+        mockMvc.perform(post("/api/v1/customers/batch")
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(batchPayload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.importedCount").value(2))
+                .andExpect(jsonPath("$.duplicatesSkipped").value(2))
+                .andExpect(jsonPath("$.invalidSkipped").value(1))
+                .andExpect(jsonPath("$.customers.length()").value(2))
+                .andExpect(jsonPath("$.customers[0].name").value("Joao Contato"))
+                .andExpect(jsonPath("$.customers[0].phone").value("11977772222"))
+                .andExpect(jsonPath("$.customers[1].name").value("Ana Contato"))
+                .andExpect(jsonPath("$.customers[1].phone").value("21966663333"));
+
+        // Shop B can still batch-import the exact same numbers independently (tenant isolation)
+        mockMvc.perform(post("/api/v1/customers/batch")
+                        .header("Authorization", "Bearer " + shopB.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "customers", List.of(
+                                        Map.of("name", "Maria Shop B", "phone", "11988881111"),
+                                        Map.of("name", "Joao Shop B", "phone", "11977772222")
+                                )
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.importedCount").value(2))
+                .andExpect(jsonPath("$.duplicatesSkipped").value(0));
+    }
+
     private RegisteredShop registerShop(
             String shopName, String document, String phone, String ownerName, String email, String password
     ) throws Exception {

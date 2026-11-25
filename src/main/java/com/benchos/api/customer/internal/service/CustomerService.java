@@ -4,19 +4,25 @@ import com.benchos.api.customer.CustomerQuery;
 import com.benchos.api.customer.CustomerSnapshot;
 import com.benchos.api.customer.internal.entity.Customer;
 import com.benchos.api.customer.internal.repository.CustomerRepository;
+import com.benchos.api.customer.internal.web.dto.BatchImportCustomersRequest;
+import com.benchos.api.customer.internal.web.dto.BatchImportCustomersResponse;
 import com.benchos.api.customer.internal.web.dto.CreateCustomerRequest;
 import com.benchos.api.customer.internal.web.dto.CustomerResponse;
 import com.benchos.api.customer.internal.web.dto.UpdateCustomerRequest;
+import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ConflictException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -71,6 +77,52 @@ public class CustomerService implements CustomerQuery {
                 new Customer(tenantId, request.name(), normalizedPhone, request.document(), request.notes())
         );
         return CustomerResponse.from(customer);
+    }
+
+    @Transactional
+    public BatchImportCustomersResponse batchImportCustomers(BatchImportCustomersRequest request) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+
+        record NormalizedEntry(CreateCustomerRequest source, String normalizedPhone) {
+        }
+
+        List<NormalizedEntry> validCandidates = new ArrayList<>();
+        Set<String> candidatePhones = new HashSet<>();
+        int invalidSkipped = 0;
+
+        for (CreateCustomerRequest item : request.customers()) {
+            try {
+                String normalizedPhone = Customer.normalizePhone(item.phone());
+                validCandidates.add(new NormalizedEntry(item, normalizedPhone));
+                candidatePhones.add(normalizedPhone);
+            } catch (BusinessRuleException ex) {
+                invalidSkipped++;
+            }
+        }
+
+        Set<String> seenPhones = candidatePhones.isEmpty()
+                ? new HashSet<>()
+                : new HashSet<>(customerRepository.findActivePhonesByTenantIdAndPhoneIn(tenantId, candidatePhones));
+
+        List<Customer> toSave = new ArrayList<>();
+        int duplicatesSkipped = 0;
+
+        for (NormalizedEntry candidate : validCandidates) {
+            if (!seenPhones.add(candidate.normalizedPhone())) {
+                duplicatesSkipped++;
+                continue;
+            }
+            CreateCustomerRequest src = candidate.source();
+            toSave.add(new Customer(tenantId, src.name(), candidate.normalizedPhone(), src.document(), src.notes()));
+        }
+
+        List<CustomerResponse> saved = toSave.isEmpty()
+                ? List.of()
+                : customerRepository.saveAll(toSave).stream()
+                        .map(CustomerResponse::from)
+                        .toList();
+
+        return new BatchImportCustomersResponse(saved.size(), duplicatesSkipped, invalidSkipped, saved);
     }
 
     @Transactional(readOnly = true)
