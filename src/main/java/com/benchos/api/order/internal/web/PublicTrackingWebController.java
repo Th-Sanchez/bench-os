@@ -15,10 +15,13 @@ import java.nio.charset.StandardCharsets;
 public class PublicTrackingWebController {
 
     private final String trackingHtml;
+    private final String receiptHtml;
 
     public PublicTrackingWebController() throws IOException {
-        ClassPathResource resource = new ClassPathResource("static/track.html");
-        this.trackingHtml = resource.getContentAsString(StandardCharsets.UTF_8);
+        this.trackingHtml = new ClassPathResource("static/track.html")
+                .getContentAsString(StandardCharsets.UTF_8);
+        this.receiptHtml = new ClassPathResource("static/receipt.html")
+                .getContentAsString(StandardCharsets.UTF_8);
     }
 
     @GetMapping(value = "/track/{publicToken}", produces = "text/html;charset=UTF-8")
@@ -27,5 +30,13 @@ public class PublicTrackingWebController {
                 .contentType(new MediaType("text", "html", StandardCharsets.UTF_8))
                 .cacheControl(CacheControl.noCache())
                 .body(trackingHtml);
+    }
+
+    @GetMapping(value = "/track/{publicToken}/receipt", produces = "text/html;charset=UTF-8")
+    public ResponseEntity<String> renderReceiptPage(@PathVariable String publicToken) {
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "html", StandardCharsets.UTF_8))
+                .cacheControl(CacheControl.noCache())
+                .body(receiptHtml);
     }
 }

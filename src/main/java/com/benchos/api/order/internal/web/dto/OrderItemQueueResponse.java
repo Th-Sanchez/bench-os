@@ -28,6 +28,7 @@ public record OrderItemQueueResponse(
         ItemStatus status,
         BigDecimal totalPrice,
         LocalDate estimatedCompletionDate,
+        Instant finishedAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -50,6 +51,7 @@ public record OrderItemQueueResponse(
                 item.getStatus(),
                 item.getTotalPrice(),
                 item.getEstimatedCompletionDate(),
+                item.getFinishedAt(),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

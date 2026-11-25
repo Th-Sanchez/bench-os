@@ -728,6 +728,11 @@
           );
         }).join('');
 
+        const hasDelivered = (order.items || []).some(function (i) { return i.status === 'DELIVERED'; });
+        const receiptBtnHtml = hasDelivered
+          ? '<a class="btn btn-primary" style="width:100%;min-height:48px" href="/track/' + encodeURIComponent(token) + '/receipt">Ver Comprovante e Termo de Garantia</a>'
+          : '';
+
         const waDigits = formatWaPhone(order.shopPhone);
         const waText = encodeURIComponent('Olá! Gostaria de falar sobre a OS #' + order.orderNumber + '.');
         const waBtnHtml = waDigits
@@ -750,6 +755,7 @@
             '</div>' +
           '</div>' +
           itemsHtml +
+          receiptBtnHtml +
           '<section class="card" style="gap:6px">' +
             '<div style="font-weight:600;font-size:14px">Instruções de Retirada</div>' +
             '<p style="font-size:13px;color:var(--text-secondary);line-height:1.5">Quando o status estiver como <strong>Pronto p/ Retirada</strong>, apresente o número da ordem <strong style="font-family:\'JetBrains Mono\',monospace">#' + order.orderNumber + '</strong> no balcão da oficina <strong>' + escapeHtml(order.shopName) + '</strong>.</p>' +

@@ -150,6 +150,17 @@ class FinanceIntegrationTest {
         awaitTransactionsCount(shopA.tenantId(), 2);
         awaitPendingEventPublications();
 
+        // Both OWNER and TECHNICIAN in Shop A can read item repair payments for warranty receipts; Shop B gets []
+        mockMvc.perform(get("/api/v1/finance/order-items/{itemId}/payments", itemId)
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/finance/order-items/{itemId}/payments", itemId)
+                        .header("Authorization", "Bearer " + shopB.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
         Integer completedEvents = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM event_publication WHERE completion_date IS NOT NULL",
                 Integer.class

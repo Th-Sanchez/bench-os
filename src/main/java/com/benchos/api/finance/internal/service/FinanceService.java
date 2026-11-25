@@ -11,6 +11,7 @@ import com.benchos.api.finance.internal.repository.SupplierRepository;
 import com.benchos.api.finance.internal.web.dto.CreateFinancialTransactionRequest;
 import com.benchos.api.finance.internal.web.dto.FinancialSummaryResponse;
 import com.benchos.api.finance.internal.web.dto.FinancialTransactionResponse;
+import com.benchos.api.finance.internal.web.dto.ItemPaymentSummaryResponse;
 import com.benchos.api.finance.internal.web.dto.PayTransactionRequest;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
@@ -256,6 +257,18 @@ public class FinanceService {
                 incomeByMethod,
                 expenseByCategory
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ItemPaymentSummaryResponse> listRepairPaymentsForItem(UUID serviceOrderItemId) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        return transactionRepository
+                .findAllByTenantIdAndServiceOrderItemIdOrderByCreatedAtAsc(tenantId, serviceOrderItemId)
+                .stream()
+                .filter(tx -> tx.getType() == TransactionType.INCOME
+                        && tx.getCategory() == TransactionCategory.REPAIR_PAYMENT)
+                .map(ItemPaymentSummaryResponse::from)
+                .toList();
     }
 
     private String resolveSupplierName(UUID supplierId, UUID tenantId) {
