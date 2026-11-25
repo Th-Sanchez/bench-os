@@ -1,9 +1,13 @@
 package com.benchos.api.shared.security;
 
+import com.benchos.api.shared.ratelimit.RateLimitFilter;
+import com.benchos.api.shared.ratelimit.RateLimitProperties;
+import com.benchos.api.shared.ratelimit.RateLimiter;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,6 +26,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,7 +43,10 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             SecurityProblemSupport securityProblemSupport,
-            CorsConfigurationSource corsConfigurationSource
+            CorsConfigurationSource corsConfigurationSource,
+            RateLimiter rateLimiter,
+            RateLimitProperties rateLimitProperties,
+            ObjectMapper objectMapper
     ) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -60,6 +68,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint(securityProblemSupport)
                         .accessDeniedHandler(securityProblemSupport)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new BenchOsJwtAuthenticationConverter()))
+                )
+                .addFilterBefore(
+                        new RateLimitFilter(rateLimiter, rateLimitProperties, objectMapper),
+                        BearerTokenAuthenticationFilter.class
                 )
                 .addFilterAfter(new TenantContextFilter(), BearerTokenAuthenticationFilter.class)
                 .build();
@@ -96,7 +108,13 @@ public class SecurityConfig {
         config.setAllowedOrigins(corsProperties.allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"));
-        config.setExposedHeaders(List.of("Location", "X-Request-Id"));
+        config.setExposedHeaders(List.of(
+                "Location",
+                "X-Request-Id",
+                HttpHeaders.RETRY_AFTER,
+                RateLimitFilter.HEADER_LIMIT,
+                RateLimitFilter.HEADER_REMAINING
+        ));
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
