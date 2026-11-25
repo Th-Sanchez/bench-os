@@ -65,6 +65,8 @@ benchos:
       issuer: ${JWT_ISSUER:https://api.benchos.com}
     cors:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
+    transport:
+      require-https: ${REQUIRE_HTTPS:false}
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       max-entries: ${RATE_LIMIT_MAX_ENTRIES:10000}
@@ -95,6 +97,7 @@ benchos:
         ip-window: ${RATE_LIMIT_PUBLIC_WRITE_IP_WINDOW:5m}
   public-tracking:
     base-url: ${PUBLIC_TRACKING_BASE_URL:http://localhost:8080/track}
+    require-https: ${PUBLIC_TRACKING_REQUIRE_HTTPS:false}
   storage:
     endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
     region: ${STORAGE_REGION:us-east-1}

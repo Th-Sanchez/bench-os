@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="referrer" content="no-referrer" />
   <title>Comprovante e Termo de Garantia · BenchOS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -555,7 +557,7 @@
         <a id="backTrackLink" class="btn btn-secondary" href="#">← Acompanhamento</a>
       </div>
       <div class="action-bar-right">
-        <a id="shopWaLink" class="btn btn-whatsapp" href="#" target="_blank" rel="noopener" style="display:none">WhatsApp da Oficina</a>
+        <a id="shopWaLink" class="btn btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" style="display:none">WhatsApp da Oficina</a>
         <button id="printBtn" class="btn btn-primary" type="button" style="display:none">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
@@ -575,11 +577,13 @@
     </div>
   </main>
 
-  <script>
+  <script nonce="__CSP_NONCE__">
     (function () {
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const pathParts = window.location.pathname.split('/').filter(Boolean);
       const trackIdx = pathParts.indexOf('track');
-      const token = trackIdx >= 0 && pathParts[trackIdx + 1] ? pathParts[trackIdx + 1] : '';
+      const rawToken = trackIdx >= 0 && pathParts[trackIdx + 1] ? pathParts[trackIdx + 1] : '';
+      const token = UUID_RE.test(rawToken) ? rawToken : '';
 
       const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -664,7 +668,8 @@
 
       function renderReceipt(order) {
         const shopName = order.shopName || 'BenchOS';
-        document.title = 'Comprovante e Garantia · OS #' + order.orderNumber + ' · ' + shopName;
+        const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
+        document.title = 'Comprovante e Garantia · OS #' + safeOrderNumber + ' · ' + shopName;
 
         const backLink = document.getElementById('backTrackLink');
         backLink.href = '/track/' + encodeURIComponent(token);
@@ -672,7 +677,7 @@
         const waDigits = formatWaPhone(order.shopPhone);
         if (waDigits) {
           const waLink = document.getElementById('shopWaLink');
-          waLink.href = 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent('Olá! Estou falando sobre o comprovante da OS #' + order.orderNumber + '.');
+          waLink.href = 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent('Olá! Estou falando sobre o comprovante da OS #' + safeOrderNumber + '.');
           waLink.style.display = 'inline-flex';
         }
 
@@ -688,7 +693,7 @@
           app.innerHTML =
             '<div class="center-box">' +
               '<h2 style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:18px">Comprovante ainda não disponível</h2>' +
-              '<p style="font-size:13.5px;color:#475569;max-width:360px">Esta Ordem de Serviço (<strong>OS #' + order.orderNumber + '</strong>) ainda não possui aparelhos entregues. Acompanhe o andamento em tempo real na página de status.</p>' +
+              '<p style="font-size:13.5px;color:#475569;max-width:360px">Esta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>) ainda não possui aparelhos entregues. Acompanhe o andamento em tempo real na página de status.</p>' +
               '<a class="btn btn-primary" href="/track/' + encodeURIComponent(token) + '">Ver acompanhamento da OS</a>' +
             '</div>';
           return;
@@ -696,7 +701,6 @@
 
         const printBtn = document.getElementById('printBtn');
         printBtn.style.display = 'inline-flex';
-        printBtn.onclick = function () { window.print(); };
 
         const entries = deliveredItems.map(function (item) {
           return { item: item, warranty: computeWarranty(item) };
@@ -804,9 +808,9 @@
                     }).join('') +
                   '</div>') +
               '<ol class="warranty-terms">' +
-                '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + order.orderNumber + '</strong>).</li>' +
+                '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
                 '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
-                '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + order.orderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
+                '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
               '</ol>' +
             '</section>'
           : '<section class="warranty-box neutral">' +
@@ -837,7 +841,7 @@
               '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
             '</div>' +
             '<div class="doc-box">' +
-              '<div class="doc-badge">OS #' + order.orderNumber + '</div>' +
+              '<div class="doc-badge">OS #' + safeOrderNumber + '</div>' +
               '<div class="doc-sub">' + escapeHtml(itemCountLabel) + '</div>' +
               '<div class="doc-sub">' + escapeHtml(formatDateTime(latestDeliveryDate)) + '</div>' +
             '</div>' +
@@ -872,10 +876,14 @@
           warrantyHtml +
 
           '<footer class="doc-footer">' +
-            '<span>Comprovante digital oficial · OS #' + order.orderNumber + '</span>' +
+            '<span>Comprovante digital oficial · OS #' + safeOrderNumber + '</span>' +
             '<span class="footer-brand">BenchOS</span>' +
           '</footer>';
       }
+
+      document.getElementById('printBtn').addEventListener('click', function () {
+        window.print();
+      });
 
       function renderError(msg) {
         document.getElementById('app').innerHTML =
