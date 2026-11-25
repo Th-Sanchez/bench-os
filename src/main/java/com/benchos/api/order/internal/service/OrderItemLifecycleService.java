@@ -86,7 +86,7 @@ public class OrderItemLifecycleService {
     @Transactional
     public ServiceOrderItemResponse updateQuote(UUID orderId, UUID itemId, UpdateItemQuoteRequest request) {
         UUID tenantId = TenantContext.requireCurrentTenant();
-        ServiceOrderItem item = findItemOrThrow(orderId, itemId, tenantId);
+        ServiceOrderItem item = findItemForUpdateOrThrow(orderId, itemId, tenantId);
 
         item.updateQuote(
                 request.technicalDiagnosis(),
@@ -97,7 +97,7 @@ public class OrderItemLifecycleService {
                 Instant.now()
         );
 
-        ServiceOrderItem saved = serviceOrderItemRepository.save(item);
+        ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
         return ServiceOrderItemResponse.from(saved, saved.getServiceOrder().getOrderNumber());
     }
 
@@ -105,7 +105,7 @@ public class OrderItemLifecycleService {
     public ServiceOrderItemResponse transitionStatus(UUID orderId, UUID itemId, TransitionItemStatusRequest request) {
         UUID tenantId = TenantContext.requireCurrentTenant();
         enforceTransitionRolePermission(request.status());
-        ServiceOrderItem item = findItemOrThrow(orderId, itemId, tenantId);
+        ServiceOrderItem item = findItemForUpdateOrThrow(orderId, itemId, tenantId);
         Instant now = Instant.now();
 
         if (request.status() == ItemStatus.DISCARDED) {
@@ -120,14 +120,14 @@ public class OrderItemLifecycleService {
             item.transitionTo(request.status(), estimatedDate, request.cancellationReason(), now);
         }
 
-        ServiceOrderItem saved = serviceOrderItemRepository.save(item);
+        ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
         return ServiceOrderItemResponse.from(saved, saved.getServiceOrder().getOrderNumber());
     }
 
     @Transactional
     public ServiceOrderItemResponse deliverItem(UUID orderId, UUID itemId, DeliverItemRequest request) {
         UUID tenantId = TenantContext.requireCurrentTenant();
-        ServiceOrderItem item = findItemOrThrow(orderId, itemId, tenantId);
+        ServiceOrderItem item = findItemForUpdateOrThrow(orderId, itemId, tenantId);
 
         List<PaymentPart> paymentParts = (request == null || request.payments() == null)
                 ? List.of()
@@ -136,7 +136,7 @@ public class OrderItemLifecycleService {
                 .toList();
 
         Optional<OrderItemDeliveredEvent> event = item.deliver(paymentParts, Instant.now());
-        ServiceOrderItem saved = serviceOrderItemRepository.save(item);
+        ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
 
         event.ifPresent(eventPublisher::publishEvent);
 
@@ -288,6 +288,11 @@ public class OrderItemLifecycleService {
 
     private ServiceOrderItem findItemOrThrow(UUID orderId, UUID itemId, UUID tenantId) {
         return serviceOrderItemRepository.findByIdAndServiceOrderIdAndTenantId(itemId, orderId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order item not found"));
+    }
+
+    private ServiceOrderItem findItemForUpdateOrThrow(UUID orderId, UUID itemId, UUID tenantId) {
+        return serviceOrderItemRepository.findForUpdateByIdAndServiceOrderIdAndTenantId(itemId, orderId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Service order item not found"));
     }
 

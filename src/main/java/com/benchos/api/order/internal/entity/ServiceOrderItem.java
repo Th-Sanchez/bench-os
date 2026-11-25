@@ -16,6 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -110,6 +111,10 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     protected ServiceOrderItem() {
     }
@@ -451,6 +456,10 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getVersion() {
+        return version;
     }
 
     private static String normalizeOptional(String value) {

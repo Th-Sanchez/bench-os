@@ -3,9 +3,12 @@ package com.benchos.api.shared.web;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ConflictException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
+import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PessimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -38,6 +41,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ProblemDetail handleConflict(ConflictException ex) {
         return buildProblem(HttpStatus.CONFLICT, "Resource Conflict", "conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            ConcurrencyFailureException.class,
+            OptimisticLockException.class,
+            PessimisticLockException.class
+    })
+    public ProblemDetail handleConcurrencyConflict(Exception ex) {
+        log.warn("Concurrent modification conflict detected: {}", ex.getMessage());
+        return buildProblem(
+                HttpStatus.CONFLICT,
+                "Concurrent Modification",
+                "concurrent-modification",
+                "This record was updated concurrently by another request. Please refresh and try again."
+        );
     }
 
     @ExceptionHandler(BusinessRuleException.class)
