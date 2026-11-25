@@ -62,6 +62,12 @@ public class ServiceOrderController {
         return serviceOrderService.getOrder(id);
     }
 
+    @GetMapping("/by-token/{publicToken}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public ServiceOrderResponse getOrderByPublicToken(@PathVariable UUID publicToken) {
+        return serviceOrderService.getOrderByPublicToken(publicToken);
+    }
+
     @GetMapping("/{id}/whatsapp-link")
     @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
     public WhatsappLinkResponse getOrderWhatsappLink(

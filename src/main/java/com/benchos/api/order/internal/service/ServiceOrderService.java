@@ -213,6 +213,19 @@ public class ServiceOrderService {
     }
 
     @Transactional(readOnly = true)
+    public ServiceOrderResponse getOrderByPublicToken(UUID publicToken) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ServiceOrder order = serviceOrderRepository.findWithItemsByPublicTokenAndTenantId(publicToken, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
+
+        CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
+                .get(order.getCustomerId());
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
+
+        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<OrderItemQueueResponse> listBenchQueue(
             List<ItemStatus> statuses,
             String tag,

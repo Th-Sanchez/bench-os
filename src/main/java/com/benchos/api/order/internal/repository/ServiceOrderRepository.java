@@ -15,4 +15,7 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, UUID
 
     @EntityGraph(attributePaths = "items")
     Optional<ServiceOrder> findWithItemsByPublicToken(UUID publicToken);
+
+    @EntityGraph(attributePaths = "items")
+    Optional<ServiceOrder> findWithItemsByPublicTokenAndTenantId(UUID publicToken, UUID tenantId);
 }
