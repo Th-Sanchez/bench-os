@@ -79,6 +79,9 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "parts_cost", nullable = false, precision = 10, scale = 2)
     private BigDecimal partsCost;
 
+    @Column(name = "parts_cost_actual", nullable = false, precision = 10, scale = 2)
+    private BigDecimal partsCostActual;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal discount;
 
@@ -184,6 +187,7 @@ public class ServiceOrderItem extends TenantAwareEntity {
         this.status = ItemStatus.RECEIVED;
         this.laborCost = ZERO_AMOUNT;
         this.partsCost = ZERO_AMOUNT;
+        this.partsCostActual = ZERO_AMOUNT;
         this.discount = ZERO_AMOUNT;
         this.totalPrice = ZERO_AMOUNT;
         this.warrantyDays = Math.max(0, initialWarrantyDays);
@@ -201,6 +205,18 @@ public class ServiceOrderItem extends TenantAwareEntity {
             Integer warrantyDays,
             Instant now
     ) {
+        updateQuote(technicalDiagnosis, laborCost, partsCost, null, discount, warrantyDays, now);
+    }
+
+    public void updateQuote(
+            String technicalDiagnosis,
+            BigDecimal laborCost,
+            BigDecimal partsCost,
+            BigDecimal partsCostActual,
+            BigDecimal discount,
+            Integer warrantyDays,
+            Instant now
+    ) {
         if (this.status.isQuoteLockedAfterApproval()) {
             throw new BusinessRuleException(
                     "Quote is locked after approval. Reopen the item to QUOTE_SENT before modifying prices"
@@ -214,6 +230,9 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
         BigDecimal scaledLabor = scaleMoney(laborCost, "Labor cost");
         BigDecimal scaledParts = scaleMoney(partsCost, "Parts cost");
+        BigDecimal scaledPartsActual = partsCostActual != null
+                ? scaleMoney(partsCostActual, "Actual parts cost")
+                : (this.partsCostActual != null ? this.partsCostActual : ZERO_AMOUNT);
         BigDecimal scaledDiscount = scaleMoney(discount, "Discount");
         BigDecimal computedTotal = scaledLabor.add(scaledParts).subtract(scaledDiscount).setScale(2, RoundingMode.HALF_UP);
 
@@ -227,12 +246,22 @@ public class ServiceOrderItem extends TenantAwareEntity {
         this.technicalDiagnosis = normalizeOptional(technicalDiagnosis);
         this.laborCost = scaledLabor;
         this.partsCost = scaledParts;
+        this.partsCostActual = scaledPartsActual;
         this.discount = scaledDiscount;
         this.totalPrice = computedTotal;
         if (warrantyDays != null) {
             this.warrantyDays = warrantyDays;
         }
         touch(now);
+    }
+
+    public BigDecimal getPartsCostActual() {
+        return partsCostActual != null ? partsCostActual : ZERO_AMOUNT;
+    }
+
+    public BigDecimal getEstimatedNetProfit() {
+        BigDecimal revenue = totalPrice != null ? totalPrice : ZERO_AMOUNT;
+        return revenue.subtract(getPartsCostActual()).setScale(2, RoundingMode.HALF_UP);
     }
 
     public void transitionTo(

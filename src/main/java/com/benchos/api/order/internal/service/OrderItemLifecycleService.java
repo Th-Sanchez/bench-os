@@ -92,6 +92,7 @@ public class OrderItemLifecycleService {
                 request.technicalDiagnosis(),
                 request.laborCost(),
                 request.partsCost(),
+                request.partsCostActual(),
                 request.discount(),
                 request.warrantyDays(),
                 Instant.now()

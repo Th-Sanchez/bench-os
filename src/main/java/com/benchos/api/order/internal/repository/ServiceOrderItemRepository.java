@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -70,5 +71,18 @@ public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderIt
     List<ServiceOrderItem> findAllByStatusInAndEstimatedCompletionDateOnOrBefore(
             @Param("statuses") Collection<ItemStatus> statuses,
             @Param("cutoffDate") LocalDate cutoffDate
+    );
+
+    @Query("""
+            SELECT i FROM ServiceOrderItem i
+            WHERE i.tenantId = :tenantId
+              AND i.status = com.benchos.api.order.ItemStatus.DELIVERED
+              AND i.deliveredAt >= :startInclusive
+              AND i.deliveredAt < :endExclusive
+            """)
+    List<ServiceOrderItem> findDeliveredInPeriod(
+            @Param("tenantId") UUID tenantId,
+            @Param("startInclusive") Instant startInclusive,
+            @Param("endExclusive") Instant endExclusive
     );
 }

@@ -13,6 +13,7 @@ import com.benchos.api.order.internal.web.dto.CreateServiceOrderItemRequest;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
 import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
+import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
@@ -31,8 +32,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -223,6 +229,68 @@ public class ServiceOrderService {
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
 
         return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+    }
+
+    @Transactional(readOnly = true)
+    public RepairProfitabilityResponse getRepairProfitability(LocalDate from, LocalDate to, String zone) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ZoneId zoneId;
+        if (zone == null || zone.isBlank()) {
+            zoneId = ZoneId.of("America/Sao_Paulo");
+        } else {
+            try {
+                zoneId = ZoneId.of(zone.trim());
+            } catch (DateTimeException ex) {
+                throw new BusinessRuleException("Invalid timezone: " + zone);
+            }
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        LocalDate start = from != null ? from : today.withDayOfMonth(1);
+        LocalDate end = to != null ? to : today.withDayOfMonth(today.lengthOfMonth());
+        if (end.isBefore(start)) {
+            throw new BusinessRuleException("'to' date must be on or after 'from' date");
+        }
+
+        Instant startInclusive = start.atStartOfDay(zoneId).toInstant();
+        Instant endExclusive = end.plusDays(1).atStartOfDay(zoneId).toInstant();
+
+        List<ServiceOrderItem> deliveredItems = serviceOrderItemRepository
+                .findDeliveredInPeriod(tenantId, startInclusive, endExclusive);
+
+        BigDecimal totalRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalPartsCostActual = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        int itemsWithPartsCostCount = 0;
+
+        for (ServiceOrderItem item : deliveredItems) {
+            totalRevenue = totalRevenue.add(item.getTotalPrice());
+            BigDecimal actualCost = item.getPartsCostActual();
+            totalPartsCostActual = totalPartsCostActual.add(actualCost);
+            if (actualCost.compareTo(BigDecimal.ZERO) > 0) {
+                itemsWithPartsCostCount++;
+            }
+        }
+
+        BigDecimal estimatedNetProfit = totalRevenue.subtract(totalPartsCostActual)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal profitMarginPercent = totalRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? estimatedNetProfit
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalRevenue, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        return new RepairProfitabilityResponse(
+                start,
+                end,
+                zoneId.getId(),
+                deliveredItems.size(),
+                itemsWithPartsCostCount,
+                totalRevenue.setScale(2, RoundingMode.HALF_UP),
+                totalPartsCostActual.setScale(2, RoundingMode.HALF_UP),
+                estimatedNetProfit,
+                profitMarginPercent
+        );
     }
 
     @Transactional(readOnly = true)
