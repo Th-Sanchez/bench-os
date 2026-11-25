@@ -9,6 +9,7 @@ import com.benchos.api.finance.internal.entity.Supplier;
 import com.benchos.api.finance.internal.repository.FinancialTransactionRepository;
 import com.benchos.api.finance.internal.repository.SupplierRepository;
 import com.benchos.api.finance.internal.web.dto.CreateFinancialTransactionRequest;
+import com.benchos.api.finance.internal.web.dto.DailyCashClosingResponse;
 import com.benchos.api.finance.internal.web.dto.FinancialSummaryResponse;
 import com.benchos.api.finance.internal.web.dto.FinancialTransactionResponse;
 import com.benchos.api.finance.internal.web.dto.ItemPaymentSummaryResponse;
@@ -27,8 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -45,6 +48,7 @@ public class FinanceService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
+    private static final ZoneId DEFAULT_CASH_CLOSING_ZONE = ZoneId.of("America/Sao_Paulo");
 
     private final FinancialTransactionRepository transactionRepository;
     private final SupplierRepository supplierRepository;
@@ -257,6 +261,80 @@ public class FinanceService {
                 incomeByMethod,
                 expenseByCategory
         );
+    }
+
+    @Transactional(readOnly = true)
+    public DailyCashClosingResponse getDailyCashClosing(LocalDate date, String zone) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ZoneId zoneId = resolveZoneId(zone);
+        LocalDate targetDate = date != null ? date : LocalDate.now(zoneId);
+
+        Instant fromInclusive = targetDate.atStartOfDay(zoneId).toInstant();
+        Instant toExclusive = targetDate.plusDays(1).atStartOfDay(zoneId).toInstant();
+
+        List<FinancialTransaction> paidToday = transactionRepository.findPaidInPeriod(
+                tenantId, fromInclusive, toExclusive
+        );
+
+        BigDecimal totalIncomePaid = ZERO;
+        BigDecimal totalExpensePaid = ZERO;
+        int incomeCount = 0;
+        int expenseCount = 0;
+        Map<TransactionPaymentMethod, BigDecimal> incomeByMethod = new EnumMap<>(TransactionPaymentMethod.class);
+        Map<TransactionPaymentMethod, BigDecimal> expenseByMethod = new EnumMap<>(TransactionPaymentMethod.class);
+
+        for (FinancialTransaction tx : paidToday) {
+            if (tx.getType() == TransactionType.INCOME) {
+                totalIncomePaid = totalIncomePaid.add(tx.getAmount());
+                incomeCount++;
+                incomeByMethod.merge(tx.getPaymentMethod(), tx.getAmount(), BigDecimal::add);
+            } else {
+                totalExpensePaid = totalExpensePaid.add(tx.getAmount());
+                expenseCount++;
+                expenseByMethod.merge(tx.getPaymentMethod(), tx.getAmount(), BigDecimal::add);
+            }
+        }
+
+        Set<UUID> supplierIds = paidToday.stream()
+                .map(FinancialTransaction::getSupplierId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> supplierNames = supplierIds.isEmpty()
+                ? Map.of()
+                : supplierRepository.findAllByIdInAndTenantId(supplierIds, tenantId)
+                        .stream()
+                        .collect(Collectors.toMap(Supplier::getId, Supplier::getName));
+
+        List<FinancialTransactionResponse> txResponses = paidToday.stream()
+                .map(tx -> FinancialTransactionResponse.from(
+                        tx,
+                        tx.getSupplierId() != null ? supplierNames.get(tx.getSupplierId()) : null
+                ))
+                .toList();
+
+        return new DailyCashClosingResponse(
+                targetDate,
+                zoneId.getId(),
+                totalIncomePaid,
+                totalExpensePaid,
+                totalIncomePaid.subtract(totalExpensePaid),
+                incomeCount,
+                expenseCount,
+                incomeByMethod,
+                expenseByMethod,
+                txResponses
+        );
+    }
+
+    private static ZoneId resolveZoneId(String zone) {
+        if (zone == null || zone.isBlank()) {
+            return DEFAULT_CASH_CLOSING_ZONE;
+        }
+        try {
+            return ZoneId.of(zone.trim());
+        } catch (DateTimeException ex) {
+            throw new BusinessRuleException("Invalid time zone identifier: " + zone);
+        }
     }
 
     @Transactional(readOnly = true)
