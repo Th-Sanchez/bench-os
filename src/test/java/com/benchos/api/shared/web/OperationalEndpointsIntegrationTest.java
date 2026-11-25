@@ -12,6 +12,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -76,5 +77,18 @@ class OperationalEndpointsIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/orders']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/public/orders/{publicToken}']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/finance/summary']").exists());
+    }
+
+    @Test
+    void servesPublicTrackingAndReceiptPagesWithoutAuthentication() throws Exception {
+        String token = "01966f7d-1234-7000-8000-000000000001";
+
+        mockMvc.perform(get("/track/" + token))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"));
+
+        mockMvc.perform(get("/track/" + token + "/receipt"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"));
     }
 }

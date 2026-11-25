@@ -2,15 +2,18 @@ package com.benchos.api.order.internal.repository;
 
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -21,6 +24,33 @@ public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderIt
 
     @EntityGraph(attributePaths = "serviceOrder")
     Optional<ServiceOrderItem> findByIdAndServiceOrderIdAndTenantId(UUID id, UUID serviceOrderId, UUID tenantId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT i FROM ServiceOrderItem i
+            WHERE i.id = :itemId
+              AND i.serviceOrder.id = :orderId
+              AND i.tenantId = :tenantId
+            """)
+    Optional<ServiceOrderItem> findForUpdateByIdAndServiceOrderIdAndTenantId(
+            @Param("itemId") UUID itemId,
+            @Param("orderId") UUID orderId,
+            @Param("tenantId") UUID tenantId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT i FROM ServiceOrderItem i
+            WHERE i.serviceOrder.id = (SELECT o.id FROM ServiceOrder o WHERE o.publicToken = :publicToken)
+              AND i.itemIndex = :itemIndex
+            """)
+    Optional<ServiceOrderItem> findForUpdateByPublicTokenAndItemIndex(
+            @Param("publicToken") UUID publicToken,
+            @Param("itemIndex") int itemIndex
+    );
+
+    @EntityGraph(attributePaths = "serviceOrder")
+    List<ServiceOrderItem> findAllByTenantIdAndIdIn(UUID tenantId, Collection<UUID> ids);
 
     List<ServiceOrderItem> findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(
             UUID tenantId,
@@ -41,5 +71,18 @@ public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderIt
     List<ServiceOrderItem> findAllByStatusInAndEstimatedCompletionDateOnOrBefore(
             @Param("statuses") Collection<ItemStatus> statuses,
             @Param("cutoffDate") LocalDate cutoffDate
+    );
+
+    @Query("""
+            SELECT i FROM ServiceOrderItem i
+            WHERE i.tenantId = :tenantId
+              AND i.status = com.benchos.api.order.ItemStatus.DELIVERED
+              AND i.deliveredAt >= :startInclusive
+              AND i.deliveredAt < :endExclusive
+            """)
+    List<ServiceOrderItem> findDeliveredInPeriod(
+            @Param("tenantId") UUID tenantId,
+            @Param("startInclusive") Instant startInclusive,
+            @Param("endExclusive") Instant endExclusive
     );
 }

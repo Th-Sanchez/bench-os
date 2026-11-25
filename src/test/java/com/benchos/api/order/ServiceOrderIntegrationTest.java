@@ -156,6 +156,7 @@ class ServiceOrderIntegrationTest {
         // Shop B starts independently at Order #1001 -> tag 1001-1
         JsonNode order1001B = createOrder(shopB.token(), anaB, "Shop B order", List.of(microwaveItem()));
         UUID order1001BId = UUID.fromString(order1001B.get("id").asString());
+        UUID publicToken1001B = UUID.fromString(order1001B.get("publicToken").asString());
         assertThat(order1001B.get("orderNumber").asLong()).isEqualTo(1001L);
         assertThat(order1001B.get("items").get(0).get("tag").asString()).isEqualTo("1001-1");
 
@@ -169,6 +170,18 @@ class ServiceOrderIntegrationTest {
                 .andExpect(jsonPath("$.items[1].tag").value("1001-2"));
 
         mockMvc.perform(get("/api/v1/orders/{id}", order1001BId)
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isNotFound());
+
+        // GET /api/v1/orders/by-token/{publicToken} supports bench QR scanner with strict tenant isolation
+        mockMvc.perform(get("/api/v1/orders/by-token/{publicToken}", publicToken1001A)
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(order1001AId.toString()))
+                .andExpect(jsonPath("$.orderNumber").value(1001))
+                .andExpect(jsonPath("$.items.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/orders/by-token/{publicToken}", publicToken1001B)
                         .header("Authorization", "Bearer " + shopA.token()))
                 .andExpect(status().isNotFound());
 

@@ -11,8 +11,11 @@ import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderItemRequest;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
+import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
+import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
+import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.security.SecurityUtils;
 import com.benchos.api.shared.tenant.TenantContext;
@@ -29,8 +32,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +102,42 @@ public class ServiceOrderService {
         return ServiceOrderResponse.from(savedOrder, customer, savedOrder.getItems());
     }
 
+    @Transactional
+    public ServiceOrderResponse openWarrantyReturn(
+            UUID parentOrderId,
+            UUID parentItemId,
+            CreateWarrantyReturnRequest request
+    ) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID currentUserId = SecurityUtils.requireCurrentUserId();
+
+        ServiceOrderItem parentItem = serviceOrderItemRepository
+                .findByIdAndServiceOrderIdAndTenantId(parentItemId, parentOrderId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order item not found"));
+
+        if (parentItem.getStatus() != ItemStatus.DELIVERED) {
+            throw new BusinessRuleException("Warranty return can only be opened for delivered items");
+        }
+
+        UUID customerId = parentItem.getServiceOrder().getCustomerId();
+        CustomerSnapshot customer = customerQuery.findAllByIds(List.of(customerId), tenantId).get(customerId);
+        if (customer == null) {
+            throw new ResourceNotFoundException("Customer not found");
+        }
+
+        int remainingDays = parentItem.remainingWarrantyDays(Instant.now());
+        long orderNumber = tenantSequenceService.nextOrderNumber(tenantId);
+        ServiceOrder returnOrder = new ServiceOrder(tenantId, customerId, currentUserId, orderNumber, request.notes());
+        returnOrder.addWarrantyReturnItem(parentItem, request.reportedIssue(), request.accessories(), remainingDays);
+
+        ServiceOrder savedOrder = serviceOrderRepository.save(returnOrder);
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = Map.of(
+                parentItem.getId(),
+                new ServiceOrderResponse.ParentItemRef(parentOrderId, parentItem.getTag())
+        );
+        return ServiceOrderResponse.from(savedOrder, customer, savedOrder.getItems(), parentRefs);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<ServiceOrderResponse> listOrders(
             Long orderNumber,
@@ -141,10 +185,11 @@ public class ServiceOrderService {
         List<UUID> orderIds = ordersPage.getContent().stream().map(ServiceOrder::getId).toList();
         Set<UUID> customerIds = ordersPage.getContent().stream().map(ServiceOrder::getCustomerId).collect(Collectors.toSet());
 
-        Map<UUID, List<ServiceOrderItem>> itemsByOrderId = serviceOrderItemRepository
-                .findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(tenantId, orderIds)
-                .stream()
+        List<ServiceOrderItem> allItems = serviceOrderItemRepository
+                .findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(tenantId, orderIds);
+        Map<UUID, List<ServiceOrderItem>> itemsByOrderId = allItems.stream()
                 .collect(Collectors.groupingBy(item -> item.getServiceOrder().getId()));
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, allItems);
 
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
 
@@ -152,7 +197,8 @@ public class ServiceOrderService {
                 .map(order -> ServiceOrderResponse.from(
                         order,
                         customersById.get(order.getCustomerId()),
-                        itemsByOrderId.getOrDefault(order.getId(), List.of())
+                        itemsByOrderId.getOrDefault(order.getId(), List.of()),
+                        parentRefs
                 ))
                 .toList();
 
@@ -167,8 +213,84 @@ public class ServiceOrderService {
 
         CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
                 .get(order.getCustomerId());
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
 
-        return ServiceOrderResponse.from(order, customer, order.getItems());
+        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+    }
+
+    @Transactional(readOnly = true)
+    public ServiceOrderResponse getOrderByPublicToken(UUID publicToken) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ServiceOrder order = serviceOrderRepository.findWithItemsByPublicTokenAndTenantId(publicToken, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
+
+        CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
+                .get(order.getCustomerId());
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
+
+        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+    }
+
+    @Transactional(readOnly = true)
+    public RepairProfitabilityResponse getRepairProfitability(LocalDate from, LocalDate to, String zone) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ZoneId zoneId;
+        if (zone == null || zone.isBlank()) {
+            zoneId = ZoneId.of("America/Sao_Paulo");
+        } else {
+            try {
+                zoneId = ZoneId.of(zone.trim());
+            } catch (DateTimeException ex) {
+                throw new BusinessRuleException("Invalid timezone: " + zone);
+            }
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        LocalDate start = from != null ? from : today.withDayOfMonth(1);
+        LocalDate end = to != null ? to : today.withDayOfMonth(today.lengthOfMonth());
+        if (end.isBefore(start)) {
+            throw new BusinessRuleException("'to' date must be on or after 'from' date");
+        }
+
+        Instant startInclusive = start.atStartOfDay(zoneId).toInstant();
+        Instant endExclusive = end.plusDays(1).atStartOfDay(zoneId).toInstant();
+
+        List<ServiceOrderItem> deliveredItems = serviceOrderItemRepository
+                .findDeliveredInPeriod(tenantId, startInclusive, endExclusive);
+
+        BigDecimal totalRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalPartsCostActual = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        int itemsWithPartsCostCount = 0;
+
+        for (ServiceOrderItem item : deliveredItems) {
+            totalRevenue = totalRevenue.add(item.getTotalPrice());
+            BigDecimal actualCost = item.getPartsCostActual();
+            totalPartsCostActual = totalPartsCostActual.add(actualCost);
+            if (actualCost.compareTo(BigDecimal.ZERO) > 0) {
+                itemsWithPartsCostCount++;
+            }
+        }
+
+        BigDecimal estimatedNetProfit = totalRevenue.subtract(totalPartsCostActual)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal profitMarginPercent = totalRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? estimatedNetProfit
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(totalRevenue, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        return new RepairProfitabilityResponse(
+                start,
+                end,
+                zoneId.getId(),
+                deliveredItems.size(),
+                itemsWithPartsCostCount,
+                totalRevenue.setScale(2, RoundingMode.HALF_UP),
+                totalPartsCostActual.setScale(2, RoundingMode.HALF_UP),
+                estimatedNetProfit,
+                profitMarginPercent
+        );
     }
 
     @Transactional(readOnly = true)
@@ -283,6 +405,24 @@ public class ServiceOrderService {
                 .toList();
 
         return PageResponse.of(responses, itemsPage);
+    }
+
+    private Map<UUID, ServiceOrderResponse.ParentItemRef> resolveParentItemRefs(
+            UUID tenantId,
+            List<ServiceOrderItem> items
+    ) {
+        Set<UUID> parentIds = items.stream()
+                .map(ServiceOrderItem::getParentItemId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        return serviceOrderItemRepository.findAllByTenantIdAndIdIn(tenantId, parentIds).stream()
+                .collect(Collectors.toMap(
+                        ServiceOrderItem::getId,
+                        parent -> new ServiceOrderResponse.ParentItemRef(parent.getServiceOrder().getId(), parent.getTag())
+                ));
     }
 
     private static int clampPageSize(int size) {

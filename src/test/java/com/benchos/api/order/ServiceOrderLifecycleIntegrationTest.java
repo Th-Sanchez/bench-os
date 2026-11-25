@@ -569,6 +569,125 @@ class ServiceOrderLifecycleIntegrationTest {
                 .andExpect(jsonPath("$.customApplianceTypes").isEmpty());
     }
 
+    @Test
+    void opensLinkedWarrantyReturnOrderWithoutFinancialDistortionAndEnforcesTenantIsolation() throws Exception {
+        RegisteredShop shopA = registerShop("Oficina Garantia A", "77888999000111", "11911112222", "Dono A", "garantia-a@shop.com", "StrongPass123!");
+        RegisteredShop shopB = registerShop("Oficina Garantia B", "88999000000122", "11922223333", "Dono B", "garantia-b@shop.com", "StrongPass123!");
+
+        UUID customerId = createCustomer(shopA.token(), "Fernanda Costa", "11988885555");
+        JsonNode originalOrder = createOrder(shopA.token(), customerId, null, List.of(
+                Map.of(
+                        "applianceType", "Micro-ondas",
+                        "brand", "Electrolux",
+                        "model", "MEF41",
+                        "voltage", "V110",
+                        "serialNumber", "SN-998877",
+                        "accessories", "Prato de vidro",
+                        "reportedIssue", "Não aquece"
+                )
+        ));
+        UUID originalOrderId = UUID.fromString(originalOrder.get("id").asString());
+        UUID originalItemId = UUID.fromString(originalOrder.get("items").get(0).get("id").asString());
+
+        // Cannot open warranty return before item is DELIVERED -> 422
+        mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/warranty-return", originalOrderId, originalItemId)
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "reportedIssue", "Parou de aquecer novamente"
+                        ))))
+                .andExpect(status().is(422));
+
+        // Complete and deliver original repair with 90-day warranty and R$ 220,00 payment
+        transition(shopA.token(), originalOrderId, originalItemId, "DIAGNOSING", null).andExpect(status().isOk());
+        updateQuote(shopA.token(), originalOrderId, originalItemId, "Troca de magnetron", "100.00", "120.00", "0.00", 90).andExpect(status().isOk());
+        transition(shopA.token(), originalOrderId, originalItemId, "QUOTE_SENT", null).andExpect(status().isOk());
+        transition(shopA.token(), originalOrderId, originalItemId, "APPROVED", null).andExpect(status().isOk());
+        transition(shopA.token(), originalOrderId, originalItemId, "IN_REPAIR", null).andExpect(status().isOk());
+        transition(shopA.token(), originalOrderId, originalItemId, "READY_FOR_PICKUP", null).andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/deliver", originalOrderId, originalItemId)
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "payments", List.of(Map.of("paymentMethod", "PIX", "amount", new BigDecimal("220.00")))
+                        ))))
+                .andExpect(status().isOk());
+
+        // Cross-tenant warranty return attempt returns 404
+        mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/warranty-return", originalOrderId, originalItemId)
+                        .header("Authorization", "Bearer " + shopB.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "reportedIssue", "Tentativa indevida"
+                        ))))
+                .andExpect(status().isNotFound());
+
+        // Open warranty return for the delivered item -> 201 Created linked to original item
+        MvcResult returnRes = mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/warranty-return", originalOrderId, originalItemId)
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "reportedIssue", "Voltou a não aquecer após 10 dias",
+                                "notes", "Prioridade garantia"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderNumber").value(1002))
+                .andExpect(jsonPath("$.customerId").value(customerId.toString()))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].warrantyReturn").value(true))
+                .andExpect(jsonPath("$.items[0].parentItemId").value(originalItemId.toString()))
+                .andExpect(jsonPath("$.items[0].parentOrderId").value(originalOrderId.toString()))
+                .andExpect(jsonPath("$.items[0].parentItemTag").value("1001-1"))
+                .andExpect(jsonPath("$.items[0].applianceType").value("Micro-ondas"))
+                .andExpect(jsonPath("$.items[0].brand").value("Electrolux"))
+                .andExpect(jsonPath("$.items[0].model").value("MEF41"))
+                .andExpect(jsonPath("$.items[0].serialNumber").value("SN-998877"))
+                .andExpect(jsonPath("$.items[0].accessories").value("Prato de vidro"))
+                .andExpect(jsonPath("$.items[0].totalPrice").value(0.00))
+                .andExpect(jsonPath("$.items[0].warrantyDays").value(90))
+                .andReturn();
+
+        JsonNode returnOrder = objectMapper.readTree(returnRes.getResponse().getContentAsString());
+        UUID returnOrderId = UUID.fromString(returnOrder.get("id").asString());
+        UUID returnItemId = UUID.fromString(returnOrder.get("items").get(0).get("id").asString());
+
+        // Bench queue exposes warrantyReturn badge & parentItemId
+        mockMvc.perform(get("/api/v1/order-items")
+                        .param("tag", "1002-1")
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].warrantyReturn").value(true))
+                .andExpect(jsonPath("$.content[0].parentItemId").value(originalItemId.toString()));
+
+        // Customer order history returns both orders with parentItemTag resolved
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("customerId", customerId.toString())
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].items[0].warrantyReturn").value(true))
+                .andExpect(jsonPath("$.content[0].items[0].parentItemTag").value("1001-1"));
+
+        // Covered warranty fast-track: RECEIVED -> DIAGNOSING -> APPROVED (R$ 0,00) -> IN_REPAIR -> READY_FOR_PICKUP -> DELIVERED (no revenue impact)
+        transition(shopA.token(), returnOrderId, returnItemId, "DIAGNOSING", null).andExpect(status().isOk());
+        transition(shopA.token(), returnOrderId, returnItemId, "APPROVED", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warrantyReturn").value(true))
+                .andExpect(jsonPath("$.parentItemTag").value("1001-1"));
+        transition(shopA.token(), returnOrderId, returnItemId, "IN_REPAIR", null).andExpect(status().isOk());
+        transition(shopA.token(), returnOrderId, returnItemId, "READY_FOR_PICKUP", null).andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/deliver", returnOrderId, returnItemId)
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"))
+                .andExpect(jsonPath("$.totalPrice").value(0.00));
+
+        // Only the original paid repair generated an OrderItemDeliveredEvent (zero financial distortion for warranty return)
+        List<OrderItemDeliveredEvent> deliveredEvents = applicationEvents.stream(OrderItemDeliveredEvent.class).toList();
+        assertThat(deliveredEvents).hasSize(1);
+        assertThat(deliveredEvents.getFirst().itemId()).isEqualTo(originalItemId);
+    }
+
     private String createUserAndLogin(String ownerToken, String name, String email, String password, String role) throws Exception {
         mockMvc.perform(post("/api/v1/users")
                         .header("Authorization", "Bearer " + ownerToken)

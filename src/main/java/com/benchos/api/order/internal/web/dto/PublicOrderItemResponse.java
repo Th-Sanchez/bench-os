@@ -1,6 +1,7 @@
 package com.benchos.api.order.internal.web.dto;
 
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.Voltage;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
 
 import java.math.BigDecimal;
@@ -17,6 +18,10 @@ public record PublicOrderItemResponse(
         String applianceType,
         String brand,
         String model,
+        Voltage voltage,
+        String serialNumber,
+        String accessories,
+        String reportedIssue,
         ItemStatus status,
         String technicalDiagnosis,
         BigDecimal totalPrice,
@@ -39,6 +44,10 @@ public record PublicOrderItemResponse(
                 item.getApplianceType(),
                 item.getBrand(),
                 item.getModel(),
+                item.getVoltage(),
+                item.getSerialNumber(),
+                item.getAccessories(),
+                item.getReportedIssue(),
                 item.getStatus(),
                 item.getTechnicalDiagnosis(),
                 item.getTotalPrice(),

@@ -66,8 +66,7 @@ public class PublicOrderService {
 
     @Transactional
     public PublicOrderResponse approveItem(UUID publicToken, int itemIndex) {
-        ServiceOrder order = findOrderOrThrow(publicToken);
-        ServiceOrderItem item = findItemByIndexOrThrow(order, itemIndex);
+        ServiceOrderItem item = findItemForUpdateOrThrow(publicToken, itemIndex);
 
         if (item.getStatus() != ItemStatus.QUOTE_SENT) {
             throw new BusinessRuleException(
@@ -76,19 +75,19 @@ public class PublicOrderService {
         }
 
         Instant now = Instant.now();
-        TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(order.getTenantId());
+        TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(item.getTenantId());
         LocalDate estimatedDate = LocalDate.now(ZoneOffset.UTC).plusDays(settings.defaultEstimatedDays());
         item.transitionTo(ItemStatus.APPROVED, estimatedDate, null, now);
-        serviceOrderItemRepository.save(item);
+        serviceOrderItemRepository.saveAndFlush(item);
 
+        ServiceOrder order = findOrderOrThrow(publicToken);
         publishQuoteRespondedEvent(order, item, true, now);
         return buildPublicResponse(order);
     }
 
     @Transactional
     public PublicOrderResponse rejectItem(UUID publicToken, int itemIndex) {
-        ServiceOrder order = findOrderOrThrow(publicToken);
-        ServiceOrderItem item = findItemByIndexOrThrow(order, itemIndex);
+        ServiceOrderItem item = findItemForUpdateOrThrow(publicToken, itemIndex);
 
         if (item.getStatus() != ItemStatus.QUOTE_SENT) {
             throw new BusinessRuleException(
@@ -98,8 +97,9 @@ public class PublicOrderService {
 
         Instant now = Instant.now();
         item.transitionTo(ItemStatus.REJECTED, null, null, now);
-        serviceOrderItemRepository.save(item);
+        serviceOrderItemRepository.saveAndFlush(item);
 
+        ServiceOrder order = findOrderOrThrow(publicToken);
         publishQuoteRespondedEvent(order, item, false, now);
         return buildPublicResponse(order);
     }
@@ -134,10 +134,8 @@ public class PublicOrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
     }
 
-    private ServiceOrderItem findItemByIndexOrThrow(ServiceOrder order, int itemIndex) {
-        return order.getItems().stream()
-                .filter(i -> i.getItemIndex() == itemIndex)
-                .findFirst()
+    private ServiceOrderItem findItemForUpdateOrThrow(UUID publicToken, int itemIndex) {
+        return serviceOrderItemRepository.findForUpdateByPublicTokenAndItemIndex(publicToken, itemIndex)
                 .orElseThrow(() -> new ResourceNotFoundException("Service order item not found"));
     }
 

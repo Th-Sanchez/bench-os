@@ -11,6 +11,7 @@ public record UpdateItemQuoteRequest(
         @Size(max = 2000) String technicalDiagnosis,
         @NotNull @DecimalMin("0.00") BigDecimal laborCost,
         @NotNull @DecimalMin("0.00") BigDecimal partsCost,
+        @DecimalMin("0.00") BigDecimal partsCostActual,
         @NotNull @DecimalMin("0.00") BigDecimal discount,
         @Min(0) Integer warrantyDays
 ) {

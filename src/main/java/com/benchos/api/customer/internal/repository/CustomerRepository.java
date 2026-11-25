@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
@@ -19,6 +20,17 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     boolean existsByTenantIdAndPhoneAndDeletedAtIsNull(UUID tenantId, String phone);
 
     boolean existsByTenantIdAndPhoneAndDeletedAtIsNullAndIdNot(UUID tenantId, String phone, UUID id);
+
+    @Query("""
+            SELECT c.phone FROM Customer c
+            WHERE c.tenantId = :tenantId
+              AND c.deletedAt IS NULL
+              AND c.phone IN :phones
+            """)
+    Set<String> findActivePhonesByTenantIdAndPhoneIn(
+            @Param("tenantId") UUID tenantId,
+            @Param("phones") Collection<String> phones
+    );
 
     List<Customer> findAllByTenantIdAndDeletedAtIsNullOrderByNameAscCreatedAtDesc(UUID tenantId);
 

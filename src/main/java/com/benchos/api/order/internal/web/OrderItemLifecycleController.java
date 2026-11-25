@@ -1,12 +1,16 @@
 package com.benchos.api.order.internal.web;
 
 import com.benchos.api.order.internal.service.OrderItemLifecycleService;
+import com.benchos.api.order.internal.service.ServiceOrderService;
+import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.DeliverItemRequest;
 import com.benchos.api.order.internal.web.dto.ServiceOrderItemResponse;
+import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
 import com.benchos.api.order.internal.web.dto.TransitionItemStatusRequest;
 import com.benchos.api.order.internal.web.dto.UpdateItemQuoteRequest;
 import com.benchos.api.order.internal.web.dto.WhatsappLinkResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -23,9 +28,14 @@ import java.util.UUID;
 public class OrderItemLifecycleController {
 
     private final OrderItemLifecycleService lifecycleService;
+    private final ServiceOrderService serviceOrderService;
 
-    public OrderItemLifecycleController(OrderItemLifecycleService lifecycleService) {
+    public OrderItemLifecycleController(
+            OrderItemLifecycleService lifecycleService,
+            ServiceOrderService serviceOrderService
+    ) {
         this.lifecycleService = lifecycleService;
+        this.serviceOrderService = serviceOrderService;
     }
 
     @PatchMapping("/quote")
@@ -56,6 +66,17 @@ public class OrderItemLifecycleController {
             @Valid @RequestBody(required = false) DeliverItemRequest request
     ) {
         return lifecycleService.deliverItem(orderId, itemId, request);
+    }
+
+    @PostMapping("/warranty-return")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public ServiceOrderResponse openWarrantyReturn(
+            @PathVariable UUID orderId,
+            @PathVariable UUID itemId,
+            @Valid @RequestBody CreateWarrantyReturnRequest request
+    ) {
+        return serviceOrderService.openWarrantyReturn(orderId, itemId, request);
     }
 
     @GetMapping("/whatsapp-link")

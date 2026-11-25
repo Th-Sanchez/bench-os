@@ -38,6 +38,7 @@ public interface FinancialTransactionRepository
               AND t.status = com.benchos.api.finance.TransactionStatus.PAID
               AND COALESCE(t.paidAt, t.createdAt) >= :fromInclusive
               AND COALESCE(t.paidAt, t.createdAt) < :toExclusive
+            ORDER BY COALESCE(t.paidAt, t.createdAt) DESC
             """)
     List<FinancialTransaction> findPaidInPeriod(
             @Param("tenantId") UUID tenantId,

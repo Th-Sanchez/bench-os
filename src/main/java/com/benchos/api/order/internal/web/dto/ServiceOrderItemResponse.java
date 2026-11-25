@@ -24,8 +24,10 @@ public record ServiceOrderItemResponse(
         ItemStatus status,
         BigDecimal laborCost,
         BigDecimal partsCost,
+        BigDecimal partsCostActual,
         BigDecimal discount,
         BigDecimal totalPrice,
+        BigDecimal estimatedNetProfit,
         LocalDate estimatedCompletionDate,
         int warrantyDays,
         String cancellationReason,
@@ -33,10 +35,23 @@ public record ServiceOrderItemResponse(
         Instant finishedAt,
         Instant deliveredAt,
         Instant discardedAt,
+        UUID parentItemId,
+        UUID parentOrderId,
+        String parentItemTag,
+        boolean warrantyReturn,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static ServiceOrderItemResponse from(ServiceOrderItem item, long orderNumber) {
+        return from(item, orderNumber, null, null);
+    }
+
+    public static ServiceOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            UUID parentOrderId,
+            String parentItemTag
+    ) {
         return new ServiceOrderItemResponse(
                 item.getId(),
                 item.getItemIndex(),
@@ -52,8 +67,10 @@ public record ServiceOrderItemResponse(
                 item.getStatus(),
                 item.getLaborCost(),
                 item.getPartsCost(),
+                item.getPartsCostActual(),
                 item.getDiscount(),
                 item.getTotalPrice(),
+                item.getEstimatedNetProfit(),
                 item.getEstimatedCompletionDate(),
                 item.getWarrantyDays(),
                 item.getCancellationReason(),
@@ -61,6 +78,10 @@ public record ServiceOrderItemResponse(
                 item.getFinishedAt(),
                 item.getDeliveredAt(),
                 item.getDiscardedAt(),
+                item.getParentItemId(),
+                parentOrderId,
+                parentItemTag,
+                item.isWarrantyReturn(),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

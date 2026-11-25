@@ -1,6 +1,8 @@
 package com.benchos.api.customer.internal.web;
 
 import com.benchos.api.customer.internal.service.CustomerService;
+import com.benchos.api.customer.internal.web.dto.BatchImportCustomersRequest;
+import com.benchos.api.customer.internal.web.dto.BatchImportCustomersResponse;
 import com.benchos.api.customer.internal.web.dto.CreateCustomerRequest;
 import com.benchos.api.customer.internal.web.dto.CustomerResponse;
 import com.benchos.api.customer.internal.web.dto.UpdateCustomerRequest;
@@ -36,6 +38,12 @@ public class CustomerController {
     @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
     public CustomerResponse createCustomer(@Valid @RequestBody CreateCustomerRequest request) {
         return customerService.createCustomer(request);
+    }
+
+    @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public BatchImportCustomersResponse batchImportCustomers(@Valid @RequestBody BatchImportCustomersRequest request) {
+        return customerService.batchImportCustomers(request);
     }
 
     @GetMapping

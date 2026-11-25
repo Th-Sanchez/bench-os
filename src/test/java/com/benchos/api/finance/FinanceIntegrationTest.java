@@ -150,6 +150,17 @@ class FinanceIntegrationTest {
         awaitTransactionsCount(shopA.tenantId(), 2);
         awaitPendingEventPublications();
 
+        // Both OWNER and TECHNICIAN in Shop A can read item repair payments for warranty receipts; Shop B gets []
+        mockMvc.perform(get("/api/v1/finance/order-items/{itemId}/payments", itemId)
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/finance/order-items/{itemId}/payments", itemId)
+                        .header("Authorization", "Bearer " + shopB.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
         Integer completedEvents = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM event_publication WHERE completion_date IS NOT NULL",
                 Integer.class
@@ -350,6 +361,98 @@ class FinanceIntegrationTest {
                 tenantId
         );
         assertThat(actual).isGreaterThanOrEqualTo(expectedMinCount);
+    }
+
+    @Test
+    void dailyCashClosingConsolidatesPaidMovementsByPaymentMethodAndTimezone() throws Exception {
+        RegisteredShop shopA = registerShop("Oficina Caixa A", "33444555000111", "11988881111", "Carlos", "caixa-a@shop.com", "Secret123!");
+        RegisteredShop shopB = registerShop("Oficina Caixa B", "44555666000122", "11988882222", "Marcos", "caixa-b@shop.com", "Secret123!");
+
+        createUser(shopA.token(), "Tecnico Caixa", "tech-caixa@shop.com", "TechPass123!", "TECHNICIAN");
+        String techToken = login("tech-caixa@shop.com", "TechPass123!");
+
+        // Non-OWNER is blocked with 403
+        mockMvc.perform(get("/api/v1/finance/daily-closing")
+                        .header("Authorization", "Bearer " + techToken))
+                .andExpect(status().isForbidden());
+
+        // Invalid timezone returns 422
+        mockMvc.perform(get("/api/v1/finance/daily-closing")
+                        .param("zone", "Invalid/Zone")
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().is(422));
+
+        // Record today's paid incomes (PIX 180.00 + CASH 120.00) and paid expense (CASH 40.00) + pending STORE_CREDIT (200.00, must NOT affect cash closing)
+        mockMvc.perform(post("/api/v1/finance/transactions")
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "type", "INCOME",
+                                "category", "REPAIR_PAYMENT",
+                                "description", "OS #1001 Micro-ondas",
+                                "amount", new BigDecimal("180.00"),
+                                "paymentMethod", "PIX",
+                                "status", "PAID"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/finance/transactions")
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "type", "INCOME",
+                                "category", "REPAIR_PAYMENT",
+                                "description", "OS #1002 Air Fryer",
+                                "amount", new BigDecimal("120.00"),
+                                "paymentMethod", "CASH",
+                                "status", "PAID"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/finance/transactions")
+                        .header("Authorization", "Bearer " + shopA.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "type", "EXPENSE",
+                                "category", "PARTS_PURCHASE",
+                                "description", "Fusivel AT",
+                                "amount", new BigDecimal("40.00"),
+                                "paymentMethod", "CASH",
+                                "status", "PAID"
+                        ))))
+                .andExpect(status().isCreated());
+
+        UUID supplierA = createSupplier(shopA.token(), "Pecas Sul", "11933334444", null);
+        createStoreCreditExpense(shopA.token(), supplierA, null, "Lote capacitores fiado", "200.00", LocalDate.now(ZoneOffset.UTC).plusDays(7));
+
+        // Record income in Shop B (must NOT leak into Shop A daily closing)
+        mockMvc.perform(post("/api/v1/finance/transactions")
+                        .header("Authorization", "Bearer " + shopB.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "type", "INCOME",
+                                "category", "REPAIR_PAYMENT",
+                                "description", "Shop B Repair",
+                                "amount", new BigDecimal("999.00"),
+                                "paymentMethod", "PIX",
+                                "status", "PAID"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/finance/daily-closing")
+                        .param("zone", "America/Sao_Paulo")
+                        .header("Authorization", "Bearer " + shopA.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.zone").value("America/Sao_Paulo"))
+                .andExpect(jsonPath("$.totalIncomePaid").value(300.00))
+                .andExpect(jsonPath("$.totalExpensePaid").value(40.00))
+                .andExpect(jsonPath("$.netCashFlow").value(260.00))
+                .andExpect(jsonPath("$.incomeCount").value(2))
+                .andExpect(jsonPath("$.expenseCount").value(1))
+                .andExpect(jsonPath("$.incomeByPaymentMethod.PIX").value(180.00))
+                .andExpect(jsonPath("$.incomeByPaymentMethod.CASH").value(120.00))
+                .andExpect(jsonPath("$.expenseByPaymentMethod.CASH").value(40.00))
+                .andExpect(jsonPath("$.transactions.length()").value(3));
     }
 
     private void awaitPendingEventPublications() {

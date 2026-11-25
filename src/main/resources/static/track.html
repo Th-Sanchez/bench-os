@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="referrer" content="no-referrer" />
   <title>Acompanhamento de Reparo · BenchOS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -530,10 +532,12 @@
     <img id="lightboxImg" class="lightbox-img" alt="Foto do aparelho" />
   </div>
 
-  <script>
+  <script nonce="__CSP_NONCE__">
     (function () {
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const pathParts = window.location.pathname.split('/').filter(Boolean);
-      const token = pathParts[pathParts.length - 1] || '';
+      const rawToken = pathParts[pathParts.length - 1] || '';
+      const token = UUID_RE.test(rawToken) ? rawToken : '';
 
       const STATUS_LABELS = {
         RECEIVED: ['Recebido', 'st-neutral'],
@@ -558,6 +562,7 @@
       let currentOrder = null;
       let feedbackMessage = null;
       let pendingAction = null;
+      let isSubmitting = false;
 
       function escapeHtml(str) {
         return String(str ?? '')
@@ -566,6 +571,17 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function sanitizeHttpUrl(rawUrl) {
+        if (!rawUrl) return '';
+        try {
+          const parsed = new URL(String(rawUrl), window.location.origin);
+          if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+            return parsed.href;
+          }
+        } catch (_) {}
+        return '';
       }
 
       function formatMoney(val) {
@@ -621,10 +637,11 @@
 
       function renderOrder(order) {
         currentOrder = order;
+        const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
         document.getElementById('shopName').textContent = order.shopName || 'BenchOS';
-        document.title = 'OS #' + order.orderNumber + ' · ' + (order.shopName || 'BenchOS');
+        document.title = 'OS #' + safeOrderNumber + ' · ' + (order.shopName || 'BenchOS');
         const osPill = document.getElementById('osPill');
-        osPill.textContent = 'OS #' + order.orderNumber;
+        osPill.textContent = 'OS #' + safeOrderNumber;
         osPill.style.display = 'inline-block';
 
         const app = document.getElementById('app');
@@ -633,6 +650,8 @@
           const step = getStepMeta(item.status);
           const labels = ['Recebido', 'Diagnóstico', step.third, 'Conserto', 'Pronto'];
           const applianceName = [item.applianceType, item.brand, item.model].filter(Boolean).join(' ');
+          const safeIndex = Number(item.itemIndex) || 0;
+          const safeWarrantyDays = Math.max(0, Number(item.warrantyDays) || 0);
 
           const labelsHtml = labels.map(function (lbl, i) {
             let cls = '';
@@ -655,14 +674,18 @@
               '</div>'
             : '';
 
-          const photosHtml = item.photos && item.photos.length > 0
+          const safePhotos = (item.photos || []).map(function (p) {
+            return { stage: p.stage, viewUrl: sanitizeHttpUrl(p.viewUrl) };
+          }).filter(function (p) { return Boolean(p.viewUrl); });
+
+          const photosHtml = safePhotos.length > 0
             ? '<div>' +
                 '<div class="row-between">' +
-                  '<div class="overline" style="margin:0">FOTOS DO ATENDIMENTO (' + item.photos.length + ')</div>' +
+                  '<div class="overline" style="margin:0">FOTOS DO ATENDIMENTO (' + safePhotos.length + ')</div>' +
                   '<div style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-muted)">Toque para ampliar</div>' +
                 '</div>' +
                 '<div class="photos-grid">' +
-                  item.photos.map(function (p) {
+                  safePhotos.map(function (p) {
                     return '<div class="photo-tile" data-zoom="' + escapeHtml(p.viewUrl) + '">' +
                       '<img src="' + escapeHtml(p.viewUrl) + '" alt="Foto ' + escapeHtml(PHOTO_STAGES[p.stage] || p.stage) + '" loading="lazy" />' +
                       '<span class="photo-stage">' + escapeHtml(PHOTO_STAGES[p.stage] || p.stage) + '</span>' +
@@ -676,10 +699,10 @@
           const decisionHtml = item.status === 'QUOTE_SENT'
             ? '<div class="decision-box">' +
                 '<div class="decision-title">Aprovação de Orçamento</div>' +
-                '<div class="decision-sub">Você aprova o conserto deste aparelho' + (priceValue > 0 ? ' no valor de <strong>' + formatMoney(priceValue) + '</strong>' : '') + '?</div>' +
+                '<div class="decision-sub">Você aprova o conserto deste aparelho' + (priceValue > 0 ? ' no valor de <strong>' + escapeHtml(formatMoney(priceValue)) + '</strong>' : '') + '?</div>' +
                 '<div class="decision-actions">' +
-                  '<button class="btn btn-danger-outline" data-action="reject" data-index="' + item.itemIndex + '" data-name="' + escapeHtml(applianceName) + '" data-price="' + priceValue + '">Recusar</button>' +
-                  '<button class="btn btn-approve" data-action="approve" data-index="' + item.itemIndex + '" data-name="' + escapeHtml(applianceName) + '" data-price="' + priceValue + '">Aprovar conserto</button>' +
+                  '<button class="btn btn-danger-outline" data-action="reject" data-index="' + safeIndex + '" data-name="' + escapeHtml(applianceName) + '" data-price="' + priceValue + '">Recusar</button>' +
+                  '<button class="btn btn-approve" data-action="approve" data-index="' + safeIndex + '" data-name="' + escapeHtml(applianceName) + '" data-price="' + priceValue + '">Aprovar conserto</button>' +
                 '</div>' +
               '</div>'
             : '';
@@ -690,16 +713,16 @@
               '<div class="price-footer">' +
                 '<div>' +
                   '<div class="price-label">Valor do conserto</div>' +
-                  '<div class="price-value">' + formatMoney(priceValue) + '</div>' +
+                  '<div class="price-value">' + escapeHtml(formatMoney(priceValue)) + '</div>' +
                 '</div>' +
-                (item.warrantyDays > 0
-                  ? '<div class="warranty-pill">Garantia: ' + item.warrantyDays + ' dias</div>'
+                (safeWarrantyDays > 0
+                  ? '<div class="warranty-pill">Garantia: ' + safeWarrantyDays + ' dias</div>'
                   : '') +
               '</div>';
           } else if (item.estimatedCompletionDate) {
             footerHtml =
               '<div class="price-footer">' +
-                '<div class="price-label">Previsão de conclusão: <strong style="font-family:\'JetBrains Mono\',monospace;color:var(--text-primary)">' + formatShortDate(item.estimatedCompletionDate) + '</strong></div>' +
+                '<div class="price-label">Previsão de conclusão: <strong style="font-family:\'JetBrains Mono\',monospace;color:var(--text-primary)">' + escapeHtml(formatShortDate(item.estimatedCompletionDate)) + '</strong></div>' +
               '</div>';
           }
 
@@ -711,8 +734,8 @@
               '</div>' +
               '<div>' +
                 '<h2 class="appliance-title">' + escapeHtml(applianceName) + '</h2>' +
-                '<div class="entry-sub">Entrada registrada em ' + formatShortDate(order.createdAt) +
-                  (item.estimatedCompletionDate ? ' · Previsão: ' + formatShortDate(item.estimatedCompletionDate) : '') +
+                '<div class="entry-sub">Entrada registrada em ' + escapeHtml(formatShortDate(order.createdAt)) +
+                  (item.estimatedCompletionDate ? ' · Previsão: ' + escapeHtml(formatShortDate(item.estimatedCompletionDate)) : '') +
                 '</div>' +
               '</div>' +
               '<div class="stepper">' +
@@ -728,10 +751,15 @@
           );
         }).join('');
 
+        const hasDelivered = (order.items || []).some(function (i) { return i.status === 'DELIVERED'; });
+        const receiptBtnHtml = hasDelivered
+          ? '<a class="btn btn-primary" style="width:100%;min-height:48px" href="/track/' + encodeURIComponent(token) + '/receipt">Ver Comprovante e Termo de Garantia</a>'
+          : '';
+
         const waDigits = formatWaPhone(order.shopPhone);
-        const waText = encodeURIComponent('Olá! Gostaria de falar sobre a OS #' + order.orderNumber + '.');
+        const waText = encodeURIComponent('Olá! Gostaria de falar sobre a OS #' + safeOrderNumber + '.');
         const waBtnHtml = waDigits
-          ? '<a class="btn btn-whatsapp" href="https://wa.me/' + waDigits + '?text=' + waText + '" target="_blank" rel="noopener">Falar com a Oficina no WhatsApp</a>'
+          ? '<a class="btn btn-whatsapp" href="https://wa.me/' + waDigits + '?text=' + waText + '" target="_blank" rel="noopener noreferrer">Falar com a Oficina no WhatsApp</a>'
           : '';
 
         const toastHtml = feedbackMessage
@@ -750,14 +778,15 @@
             '</div>' +
           '</div>' +
           itemsHtml +
+          receiptBtnHtml +
           '<section class="card" style="gap:6px">' +
             '<div style="font-weight:600;font-size:14px">Instruções de Retirada</div>' +
-            '<p style="font-size:13px;color:var(--text-secondary);line-height:1.5">Quando o status estiver como <strong>Pronto p/ Retirada</strong>, apresente o número da ordem <strong style="font-family:\'JetBrains Mono\',monospace">#' + order.orderNumber + '</strong> no balcão da oficina <strong>' + escapeHtml(order.shopName) + '</strong>.</p>' +
+            '<p style="font-size:13px;color:var(--text-secondary);line-height:1.5">Quando o status estiver como <strong>Pronto p/ Retirada</strong>, apresente o número da ordem <strong style="font-family:\'JetBrains Mono\',monospace">#' + safeOrderNumber + '</strong> no balcão da oficina <strong>' + escapeHtml(order.shopName) + '</strong>.</p>' +
           '</section>' +
           waBtnHtml +
           '<footer class="footer">' +
-            '<div class="footer-clock">BenchOS · Atualizado às ' + formatClock() + '</div>' +
-            '<div class="footer-note">Ambiente seguro para cliente final · OS #' + order.orderNumber + '</div>' +
+            '<div class="footer-clock">BenchOS · Atualizado às ' + escapeHtml(formatClock()) + '</div>' +
+            '<div class="footer-note">Ambiente seguro para cliente final · OS #' + safeOrderNumber + '</div>' +
           '</footer>';
 
         bindEvents();
@@ -766,13 +795,16 @@
       function bindEvents() {
         document.querySelectorAll('[data-zoom]').forEach(function (el) {
           el.addEventListener('click', function () {
-            document.getElementById('lightboxImg').src = el.getAttribute('data-zoom');
+            const safeUrl = sanitizeHttpUrl(el.getAttribute('data-zoom'));
+            if (!safeUrl) return;
+            document.getElementById('lightboxImg').src = safeUrl;
             document.getElementById('lightbox').classList.add('open');
           });
         });
 
         document.querySelectorAll('[data-action]').forEach(function (btn) {
           btn.addEventListener('click', function () {
+            if (isSubmitting) return;
             const action = btn.getAttribute('data-action');
             const itemIndex = Number(btn.getAttribute('data-index'));
             const name = btn.getAttribute('data-name') || 'aparelho';
@@ -835,33 +867,49 @@
       });
 
       document.getElementById('confirmCancel').addEventListener('click', function () {
+        if (isSubmitting) return;
         document.getElementById('confirmModal').classList.remove('open');
         pendingAction = null;
       });
 
       document.getElementById('confirmSubmit').addEventListener('click', async function () {
-        if (!pendingAction) return;
+        if (!pendingAction || isSubmitting) return;
+        isSubmitting = true;
+        const activeAction = pendingAction;
         const submitBtn = document.getElementById('confirmSubmit');
+        const cancelBtn = document.getElementById('confirmCancel');
+        const originalSubmitLabel = submitBtn.textContent;
         submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+        document.querySelectorAll('[data-action]').forEach(function (btn) {
+          btn.disabled = true;
+        });
+
         try {
           const endpoint = '/api/v1/public/orders/' + encodeURIComponent(token) +
-            '/items/' + pendingAction.itemIndex + '/' + pendingAction.action;
+            '/items/' + activeAction.itemIndex + '/' + activeAction.action;
           const res = await fetch(endpoint, { method: 'POST' });
           if (!res.ok) {
-            let errText = 'Não foi possível registrar sua resposta. Atualize a página.';
-            try {
-              const prob = await res.json();
-              if (prob && prob.detail) errText = prob.detail;
-            } catch (_) {}
+            let errText = res.status === 409 || res.status === 422
+              ? 'Este orçamento já foi atualizado. Exibindo o status mais recente.'
+              : 'Não foi possível registrar sua resposta. Atualize a página.';
+            if (res.status !== 409 && res.status !== 422) {
+              try {
+                const prob = await res.json();
+                if (prob && prob.detail) errText = prob.detail;
+              } catch (_) {}
+            }
             feedbackMessage = { type: 'error', text: errText };
             document.getElementById('confirmModal').classList.remove('open');
+            pendingAction = null;
             await loadOrder();
             return;
           }
           const updated = await res.json();
           feedbackMessage = {
             type: 'success',
-            text: pendingAction.action === 'approve'
+            text: activeAction.action === 'approve'
               ? 'Orçamento aprovado com sucesso! A oficina já foi notificada para iniciar o reparo.'
               : 'Orçamento recusado. O aparelho ficará disponível para devolução sem custo.'
           };
@@ -874,7 +922,13 @@
           document.getElementById('confirmModal').classList.remove('open');
           if (currentOrder) renderOrder(currentOrder);
         } finally {
+          isSubmitting = false;
           submitBtn.disabled = false;
+          cancelBtn.disabled = false;
+          submitBtn.textContent = originalSubmitLabel;
+          document.querySelectorAll('[data-action]').forEach(function (btn) {
+            btn.disabled = false;
+          });
         }
       });
 

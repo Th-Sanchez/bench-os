@@ -16,6 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -78,6 +79,9 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "parts_cost", nullable = false, precision = 10, scale = 2)
     private BigDecimal partsCost;
 
+    @Column(name = "parts_cost_actual", nullable = false, precision = 10, scale = 2)
+    private BigDecimal partsCostActual;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal discount;
 
@@ -105,11 +109,21 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "discarded_at")
     private Instant discardedAt;
 
+    @Column(name = "parent_item_id", updatable = false)
+    private UUID parentItemId;
+
+    @Column(name = "is_warranty_return", nullable = false, updatable = false)
+    private boolean warrantyReturn;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     protected ServiceOrderItem() {
     }
@@ -126,6 +140,38 @@ public class ServiceOrderItem extends TenantAwareEntity {
             String accessories,
             String reportedIssue
     ) {
+        this(
+                tenantId,
+                serviceOrder,
+                itemIndex,
+                applianceType,
+                brand,
+                model,
+                voltage,
+                serialNumber,
+                accessories,
+                reportedIssue,
+                null,
+                false,
+                DEFAULT_WARRANTY_DAYS
+        );
+    }
+
+    ServiceOrderItem(
+            UUID tenantId,
+            ServiceOrder serviceOrder,
+            int itemIndex,
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue,
+            UUID parentItemId,
+            boolean warrantyReturn,
+            int initialWarrantyDays
+    ) {
         super(tenantId);
         Instant now = Instant.now();
         this.id = UuidV7Generator.next();
@@ -141,9 +187,12 @@ public class ServiceOrderItem extends TenantAwareEntity {
         this.status = ItemStatus.RECEIVED;
         this.laborCost = ZERO_AMOUNT;
         this.partsCost = ZERO_AMOUNT;
+        this.partsCostActual = ZERO_AMOUNT;
         this.discount = ZERO_AMOUNT;
         this.totalPrice = ZERO_AMOUNT;
-        this.warrantyDays = DEFAULT_WARRANTY_DAYS;
+        this.warrantyDays = Math.max(0, initialWarrantyDays);
+        this.parentItemId = parentItemId;
+        this.warrantyReturn = warrantyReturn;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -152,6 +201,18 @@ public class ServiceOrderItem extends TenantAwareEntity {
             String technicalDiagnosis,
             BigDecimal laborCost,
             BigDecimal partsCost,
+            BigDecimal discount,
+            Integer warrantyDays,
+            Instant now
+    ) {
+        updateQuote(technicalDiagnosis, laborCost, partsCost, null, discount, warrantyDays, now);
+    }
+
+    public void updateQuote(
+            String technicalDiagnosis,
+            BigDecimal laborCost,
+            BigDecimal partsCost,
+            BigDecimal partsCostActual,
             BigDecimal discount,
             Integer warrantyDays,
             Instant now
@@ -169,6 +230,9 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
         BigDecimal scaledLabor = scaleMoney(laborCost, "Labor cost");
         BigDecimal scaledParts = scaleMoney(partsCost, "Parts cost");
+        BigDecimal scaledPartsActual = partsCostActual != null
+                ? scaleMoney(partsCostActual, "Actual parts cost")
+                : (this.partsCostActual != null ? this.partsCostActual : ZERO_AMOUNT);
         BigDecimal scaledDiscount = scaleMoney(discount, "Discount");
         BigDecimal computedTotal = scaledLabor.add(scaledParts).subtract(scaledDiscount).setScale(2, RoundingMode.HALF_UP);
 
@@ -182,12 +246,22 @@ public class ServiceOrderItem extends TenantAwareEntity {
         this.technicalDiagnosis = normalizeOptional(technicalDiagnosis);
         this.laborCost = scaledLabor;
         this.partsCost = scaledParts;
+        this.partsCostActual = scaledPartsActual;
         this.discount = scaledDiscount;
         this.totalPrice = computedTotal;
         if (warrantyDays != null) {
             this.warrantyDays = warrantyDays;
         }
         touch(now);
+    }
+
+    public BigDecimal getPartsCostActual() {
+        return partsCostActual != null ? partsCostActual : ZERO_AMOUNT;
+    }
+
+    public BigDecimal getEstimatedNetProfit() {
+        BigDecimal revenue = totalPrice != null ? totalPrice : ZERO_AMOUNT;
+        return revenue.subtract(getPartsCostActual()).setScale(2, RoundingMode.HALF_UP);
     }
 
     public void transitionTo(
@@ -205,7 +279,11 @@ public class ServiceOrderItem extends TenantAwareEntity {
         if (targetStatus == ItemStatus.DISCARDED) {
             throw new BusinessRuleException("Use the discard policy transition for DISCARDED status");
         }
-        if (!this.status.canTransitionTo(targetStatus)) {
+        boolean coveredWarrantyFastTrack = this.warrantyReturn
+                && this.status == ItemStatus.DIAGNOSING
+                && targetStatus == ItemStatus.APPROVED
+                && this.totalPrice.compareTo(BigDecimal.ZERO) == 0;
+        if (!this.status.canTransitionTo(targetStatus) && !coveredWarrantyFastTrack) {
             throw new BusinessRuleException("Invalid status transition from " + this.status + " to " + targetStatus);
         }
 
@@ -441,6 +519,30 @@ public class ServiceOrderItem extends TenantAwareEntity {
         return deliveredAt;
     }
 
+    public int remainingWarrantyDays(Instant now) {
+        if (this.status != ItemStatus.DELIVERED
+                || this.deliveredAt == null
+                || this.warrantyDays <= 0
+                || this.totalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+        Instant expiresAt = this.deliveredAt.plus(Duration.ofDays(this.warrantyDays));
+        if (!expiresAt.isAfter(now)) {
+            return 0;
+        }
+        long remainingSeconds = Duration.between(now, expiresAt).getSeconds();
+        long secondsPerDay = Duration.ofDays(1).getSeconds();
+        return (int) Math.max(0L, (remainingSeconds + secondsPerDay - 1L) / secondsPerDay);
+    }
+
+    public UUID getParentItemId() {
+        return parentItemId;
+    }
+
+    public boolean isWarrantyReturn() {
+        return warrantyReturn;
+    }
+
     public Instant getDiscardedAt() {
         return discardedAt;
     }
@@ -451,6 +553,10 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getVersion() {
+        return version;
     }
 
     private static String normalizeOptional(String value) {

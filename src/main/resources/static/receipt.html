@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Comprovante e Termo de Garantia · BenchOS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 13mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F1F5F9;
+      color: #0F172A;
+      font-size: 13px;
+      line-height: 1.48;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Sticky Action Bar (hidden when printing) */
+    .action-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .action-bar-inner {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .action-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .action-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      text-decoration: none;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-primary {
+      background: #2563EB;
+      color: #FFFFFF;
+    }
+    .btn-secondary {
+      background: #F8FAFC;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+    .btn-whatsapp {
+      background: #ECFDF5;
+      color: #065F46;
+      border-color: #A7F3D0;
+    }
+
+    /* Main Document Sheet */
+    .page-wrap {
+      max-width: 780px;
+      margin: 16px auto 40px;
+      padding: 0 12px;
+    }
+    .sheet {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    /* Executive Banner */
+    .banner {
+      background: #0F172A;
+      color: #FFFFFF;
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 4px solid #2563EB;
+      margin-bottom: 16px;
+    }
+    .shop-eyebrow {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: #93C5FD;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .shop-name {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0 0 5px 0;
+      color: #FFFFFF;
+      letter-spacing: -0.3px;
+    }
+    .shop-meta {
+      font-size: 11.5px;
+      color: #CBD5E1;
+      margin: 2px 0;
+    }
+    .doc-box {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .doc-badge {
+      display: inline-block;
+      background: #2563EB;
+      color: #FFFFFF;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 13px;
+      border-radius: 7px;
+      letter-spacing: 0.3px;
+    }
+    .doc-sub {
+      font-size: 11px;
+      color: #CBD5E1;
+      margin-top: 6px;
+    }
+
+    /* Panels */
+    .panel {
+      border: 1px solid #CBD5E1;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .panel-head {
+      background: #F1F5F9;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 8px 13px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: #475569;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Item Blocks */
+    .item-block {
+      padding: 13px;
+      border-bottom: 1px solid #E2E8F0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .item-block:last-child {
+      border-bottom: none;
+    }
+    .item-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+    .item-head-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .item-tag {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .item-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #0F172A;
+    }
+    .item-head-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .item-warranty-badge {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      color: #1E40AF;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .item-warranty-badge.neutral {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #475569;
+    }
+    .item-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .item-meta-line {
+      font-size: 11px;
+      color: #64748B;
+      margin-bottom: 9px;
+    }
+    .item-report-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #F8FAFC;
+    }
+    .item-report-col {
+      padding: 8px 11px;
+    }
+    .item-report-col + .item-report-col {
+      border-left: 1px solid #E2E8F0;
+      background: #FFFFFF;
+    }
+    .report-sub {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      color: #64748B;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .report-text {
+      color: #1E293B;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .pending-note {
+      background: #FFFBEB;
+      border-top: 1px solid #FDE68A;
+      color: #92400E;
+      font-size: 11.5px;
+      padding: 9px 13px;
+    }
+
+    /* Financial Summary */
+    .finance-panel {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    table.fin-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.fin-table td {
+      padding: 8px 13px;
+      border-bottom: 1px solid #F1F5F9;
+      font-size: 12.5px;
+    }
+    table.fin-table td.num {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+    table.fin-table tr.discount td {
+      color: #059669;
+    }
+    table.fin-table tr.total-row td {
+      background: #F8FAFC;
+      border-top: 2px solid #0F172A;
+      border-bottom: none;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #0F172A;
+      padding: 10px 13px;
+    }
+    .paid-strip {
+      padding: 9px 13px;
+      border-top: 1px dashed #CBD5E1;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .paid-strip-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      color: #64748B;
+      text-transform: uppercase;
+    }
+    .paid-pill {
+      display: inline-block;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      color: #065F46;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .paid-pill.neutral {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #334155;
+    }
+
+    /* Warranty Certificate */
+    .warranty-box {
+      border: 1.5px solid #93C5FD;
+      background: #EFF6FF;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .warranty-box.neutral {
+      border-color: #CBD5E1;
+      background: #F8FAFC;
+    }
+    .warranty-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .warranty-tag {
+      display: inline-block;
+      background: #2563EB;
+      color: #FFFFFF;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+    .warranty-tag.neutral { background: #475569; }
+    .warranty-heading {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #0F172A;
+    }
+    .warranty-seal {
+      background: #FFFFFF;
+      border: 1.5px solid #2563EB;
+      border-radius: 8px;
+      padding: 6px 13px;
+      text-align: center;
+    }
+    .seal-label {
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      color: #2563EB;
+    }
+    .seal-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1E3A8A;
+    }
+    .warranty-dates {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .w-date-cell {
+      background: #FFFFFF;
+      border: 1px solid #DBEAFE;
+      border-radius: 7px;
+      padding: 7px 10px;
+    }
+    .w-date-cell.highlight {
+      border-color: #93C5FD;
+      background: #DBEAFE;
+    }
+    .w-date-label {
+      display: block;
+      font-size: 9px;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .w-date-val {
+      display: block;
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .warranty-list {
+      background: #FFFFFF;
+      border: 1px solid #DBEAFE;
+      border-radius: 7px;
+      padding: 7px 11px;
+      margin-bottom: 10px;
+    }
+    .w-list-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 4px 0;
+      font-size: 12px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .w-list-row:last-child { border-bottom: none; }
+    .warranty-terms {
+      padding-left: 18px;
+      color: #1E293B;
+      font-size: 11.5px;
+    }
+    .warranty-terms li { margin-bottom: 5px; }
+    .neutral-note {
+      font-size: 12.5px;
+      color: #334155;
+      margin-top: 4px;
+    }
+
+    /* Footer */
+    .doc-footer {
+      border-top: 1px solid #E2E8F0;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 10.5px;
+      color: #64748B;
+    }
+    .footer-brand {
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    /* Loading & Empty States */
+    .center-box {
+      text-align: center;
+      padding: 56px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #E2E8F0;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .sheet { padding: 14px; }
+      .banner { padding: 14px 16px; }
+      .doc-box { text-align: left; }
+      .item-report-grid { grid-template-columns: 1fr; }
+      .item-report-col + .item-report-col {
+        border-left: none;
+        border-top: 1px solid #E2E8F0;
+      }
+      .warranty-dates { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body {
+        background: #FFFFFF;
+        font-size: 12px;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .page-wrap {
+        margin: 0;
+        padding: 0;
+        max-width: none;
+      }
+      .sheet {
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="action-bar no-print">
+    <div class="action-bar-inner">
+      <div class="action-bar-left">
+        <a id="backTrackLink" class="btn btn-secondary" href="#">← Acompanhamento</a>
+      </div>
+      <div class="action-bar-right">
+        <a id="shopWaLink" class="btn btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" style="display:none">WhatsApp da Oficina</a>
+        <button id="printBtn" class="btn btn-primary" type="button" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Salvar / Imprimir PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div id="app" class="sheet">
+      <div class="center-box">
+        <div class="spinner"></div>
+        <p style="font-size:13px;color:#475569">Carregando comprovante de entrega e garantia...</p>
+      </div>
+    </div>
+  </main>
+
+  <script nonce="__CSP_NONCE__">
+    (function () {
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const trackIdx = pathParts.indexOf('track');
+      const rawToken = trackIdx >= 0 && pathParts[trackIdx + 1] ? pathParts[trackIdx + 1] : '';
+      const token = UUID_RE.test(rawToken) ? rawToken : '';
+
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+      const STATUS_LABELS = {
+        RECEIVED: 'Recebido',
+        DIAGNOSING: 'Diagnóstico',
+        QUOTE_SENT: 'Orçamento',
+        APPROVED: 'Aprovado',
+        WAITING_PARTS: 'Aguard. Peça',
+        IN_REPAIR: 'Em Conserto',
+        READY_FOR_PICKUP: 'Pronto p/ Retirada',
+        DELIVERED: 'Entregue',
+        REJECTED: 'Recusado',
+        DISCARDED: 'Descartado',
+        CANCELLED: 'Cancelado',
+      };
+
+      const VOLTAGE_LABELS = {
+        V110: '110V',
+        V220: '220V',
+        BIVOLT: 'Bivolt',
+        BATTERY: 'Bateria',
+        NOT_APPLICABLE: 'N/I',
+      };
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatMoney(val) {
+        const num = Number(val) || 0;
+        return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function formatPhoneDisplay(raw) {
+        if (!raw) return '—';
+        const d = String(raw).replace(/\D/g, '');
+        if (d.length === 11) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+        if (d.length === 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+        return raw;
+      }
+
+      function formatWaPhone(phone) {
+        const digits = String(phone || '').replace(/\D/g, '');
+        if (!digits) return '';
+        return (digits.length === 10 || digits.length === 11) && !digits.startsWith('55')
+          ? '55' + digits
+          : digits;
+      }
+
+      function formatFullDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return day + '/' + month + '/' + date.getFullYear();
+      }
+
+      function formatDateTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return formatFullDate(date) + ' ' + hours + ':' + minutes;
+      }
+
+      function computeWarranty(item) {
+        const deliveredDate = item.deliveredAt ? new Date(item.deliveredAt) : new Date();
+        const isPaid = (Number(item.totalPrice) || 0) > 0 && (Number(item.warrantyDays) || 0) > 0;
+        if (!isPaid) {
+          return { hasWarranty: false, deliveredDate: deliveredDate, expiryDate: null, warrantyDays: 0 };
+        }
+        const expiryDate = new Date(deliveredDate.getTime() + Number(item.warrantyDays) * MS_PER_DAY);
+        return {
+          hasWarranty: true,
+          deliveredDate: deliveredDate,
+          expiryDate: expiryDate,
+          warrantyDays: Number(item.warrantyDays),
+        };
+      }
+
+      function renderReceipt(order) {
+        const shopName = order.shopName || 'BenchOS';
+        const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
+        document.title = 'Comprovante e Garantia · OS #' + safeOrderNumber + ' · ' + shopName;
+
+        const backLink = document.getElementById('backTrackLink');
+        backLink.href = '/track/' + encodeURIComponent(token);
+
+        const waDigits = formatWaPhone(order.shopPhone);
+        if (waDigits) {
+          const waLink = document.getElementById('shopWaLink');
+          waLink.href = 'https://wa.me/' + waDigits + '?text=' + encodeURIComponent('Olá! Estou falando sobre o comprovante da OS #' + safeOrderNumber + '.');
+          waLink.style.display = 'inline-flex';
+        }
+
+        const allItems = (order.items || []).slice().sort(function (a, b) {
+          return a.itemIndex - b.itemIndex;
+        });
+        const deliveredItems = allItems.filter(function (i) { return i.status === 'DELIVERED'; });
+        const pendingItems = allItems.filter(function (i) { return i.status !== 'DELIVERED'; });
+
+        const app = document.getElementById('app');
+
+        if (deliveredItems.length === 0) {
+          app.innerHTML =
+            '<div class="center-box">' +
+              '<h2 style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:18px">Comprovante ainda não disponível</h2>' +
+              '<p style="font-size:13.5px;color:#475569;max-width:360px">Esta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>) ainda não possui aparelhos entregues. Acompanhe o andamento em tempo real na página de status.</p>' +
+              '<a class="btn btn-primary" href="/track/' + encodeURIComponent(token) + '">Ver acompanhamento da OS</a>' +
+            '</div>';
+          return;
+        }
+
+        const printBtn = document.getElementById('printBtn');
+        printBtn.style.display = 'inline-flex';
+
+        const entries = deliveredItems.map(function (item) {
+          return { item: item, warranty: computeWarranty(item) };
+        });
+        const coveredEntries = entries.filter(function (e) { return e.warranty.hasWarranty && e.warranty.expiryDate; });
+
+        const latestDeliveryDate = entries.reduce(function (latest, entry) {
+          return entry.warranty.deliveredDate.getTime() > latest.getTime()
+            ? entry.warranty.deliveredDate
+            : latest;
+        }, entries[0].warranty.deliveredDate);
+
+        const grandTotal = deliveredItems.reduce(function (acc, i) { return acc + (Number(i.totalPrice) || 0); }, 0);
+        const isAllFree = grandTotal <= 0;
+
+        const uniqueExpiries = Array.from(new Set(coveredEntries.map(function (e) {
+          return formatFullDate(e.warranty.expiryDate);
+        })));
+        const singleWarranty = coveredEntries.length > 0 && uniqueExpiries.length === 1
+          ? coveredEntries[0]
+          : null;
+
+        const itemCountLabel = deliveredItems.length === 1
+          ? '1 aparelho entregue'
+          : deliveredItems.length + ' aparelhos entregues';
+
+        const itemsHtml = entries.map(function (entry) {
+          const item = entry.item;
+          const warranty = entry.warranty;
+          const title = [item.applianceType, item.brand, item.model].filter(Boolean).join(' ');
+          const itemTotal = Number(item.totalPrice) || 0;
+
+          const metaBits = [
+            item.voltage ? 'Voltagem: ' + (VOLTAGE_LABELS[item.voltage] || item.voltage) : null,
+            item.serialNumber ? 'S/N: ' + item.serialNumber : null,
+            item.accessories ? 'Acessórios: ' + item.accessories : null,
+            'Entregue em ' + formatDateTime(warranty.deliveredDate),
+          ].filter(Boolean);
+
+          const warrantyBadge = warranty.hasWarranty && warranty.expiryDate
+            ? '<span class="item-warranty-badge">Garantia ' + warranty.warrantyDays + 'd · até ' + escapeHtml(formatFullDate(warranty.expiryDate)) + '</span>'
+            : '<span class="item-warranty-badge neutral">Devolução sem garantia</span>';
+
+          const diagFallback = itemTotal <= 0
+            ? 'Aparelho devolvido sem execução de reparo.'
+            : 'Serviço técnico concluído conforme orçamento aprovado.';
+
+          return (
+            '<div class="item-block">' +
+              '<div class="item-head">' +
+                '<div class="item-head-left">' +
+                  '<span class="item-tag">#' + escapeHtml(item.tag) + '</span>' +
+                  '<span class="item-title">' + escapeHtml(title) + '</span>' +
+                '</div>' +
+                '<div class="item-head-right">' +
+                  warrantyBadge +
+                  '<span class="item-price">' + escapeHtml(formatMoney(itemTotal)) + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="item-meta-line">' + escapeHtml(metaBits.join(' · ')) + '</div>' +
+              '<div class="item-report-grid">' +
+                '<div class="item-report-col">' +
+                  '<div class="report-sub">Defeito Relatado</div>' +
+                  '<div class="report-text">' + escapeHtml(item.reportedIssue || '—') + '</div>' +
+                '</div>' +
+                '<div class="item-report-col">' +
+                  '<div class="report-sub">Diagnóstico / Serviço Executado</div>' +
+                  '<div class="report-text">' + escapeHtml(item.technicalDiagnosis || diagFallback) + '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        const pendingHtml = pendingItems.length > 0
+          ? '<div class="pending-note"><strong>Outros itens desta OS (ainda não entregues):</strong> ' +
+              pendingItems.map(function (p) {
+                const label = [p.applianceType, p.brand, p.model].filter(Boolean).join(' ');
+                return '#' + escapeHtml(p.tag) + ' ' + escapeHtml(label) + ' (' + escapeHtml(STATUS_LABELS[p.status] || p.status) + ')';
+              }).join(' · ') +
+            '</div>'
+          : '';
+
+        const warrantyHtml = coveredEntries.length > 0
+          ? '<section class="warranty-box">' +
+              '<div class="warranty-top">' +
+                '<div>' +
+                  '<div class="warranty-tag">CERTIFICADO E TERMO DE GARANTIA</div>' +
+                  '<div class="warranty-heading">Garantia Legal e de Serviço</div>' +
+                '</div>' +
+                (singleWarranty
+                  ? '<div class="warranty-seal"><div class="seal-label">VÁLIDA ATÉ</div><div class="seal-date">' + escapeHtml(formatFullDate(singleWarranty.warranty.expiryDate)) + '</div></div>'
+                  : '<div class="warranty-seal"><div class="seal-label">ITENS COBERTOS</div><div class="seal-date">' + coveredEntries.length + ' aparelhos</div></div>') +
+              '</div>' +
+              (singleWarranty
+                ? '<div class="warranty-dates">' +
+                    '<div class="w-date-cell"><span class="w-date-label">Data da Entrega</span><span class="w-date-val">' + escapeHtml(formatFullDate(singleWarranty.warranty.deliveredDate)) + '</span></div>' +
+                    '<div class="w-date-cell"><span class="w-date-label">Prazo de Cobertura</span><span class="w-date-val">' + singleWarranty.warranty.warrantyDays + ' dias</span></div>' +
+                    '<div class="w-date-cell highlight"><span class="w-date-label">Término da Garantia</span><span class="w-date-val">' + escapeHtml(formatFullDate(singleWarranty.warranty.expiryDate)) + '</span></div>' +
+                  '</div>'
+                : '<div class="warranty-list">' +
+                    coveredEntries.map(function (e) {
+                      const label = [e.item.applianceType, e.item.brand].filter(Boolean).join(' ');
+                      return '<div class="w-list-row"><span><strong>#' + escapeHtml(e.item.tag) + '</strong> ' + escapeHtml(label) + '</span><span>' + e.warranty.warrantyDays + 'd · válida até <strong>' + escapeHtml(formatFullDate(e.warranty.expiryDate)) + '</strong></span></div>';
+                    }).join('') +
+                  '</div>') +
+              '<ol class="warranty-terms">' +
+                '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
+                '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
+                '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
+              '</ol>' +
+            '</section>'
+          : '<section class="warranty-box neutral">' +
+              '<div class="warranty-top">' +
+                '<div>' +
+                  '<div class="warranty-tag neutral">COMPROVANTE DE DEVOLUÇÃO</div>' +
+                  '<div class="warranty-heading">Entrega sem cobrança</div>' +
+                '</div>' +
+              '</div>' +
+              '<p class="neutral-note">Confirmamos a devolução dos aparelhos listados em <strong>' + escapeHtml(formatDateTime(latestDeliveryDate)) + '</strong>, sem cobrança e sem cobertura de garantia de reparo.</p>' +
+            '</section>';
+
+        const financeRowsHtml = !isAllFree
+          ? deliveredItems.map(function (i) {
+              const label = '#' + escapeHtml(i.tag) + ' · ' + escapeHtml([i.applianceType, i.brand, i.model].filter(Boolean).join(' '));
+              return '<tr><td>' + label + '</td><td class="num">' + escapeHtml(formatMoney(i.totalPrice)) + '</td></tr>';
+            }).join('')
+          : '';
+
+        const createdDateLabel = order.createdAt ? formatFullDate(new Date(order.createdAt)) : '—';
+
+        app.innerHTML =
+          '<header class="banner">' +
+            '<div>' +
+              '<div class="shop-eyebrow">COMPROVANTE DE ENTREGA & GARANTIA</div>' +
+              '<h1 class="shop-name">' + escapeHtml(shopName) + '</h1>' +
+              (order.shopPhone ? '<p class="shop-meta">Telefone / WhatsApp: ' + escapeHtml(formatPhoneDisplay(order.shopPhone)) + '</p>' : '') +
+              '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
+            '</div>' +
+            '<div class="doc-box">' +
+              '<div class="doc-badge">OS #' + safeOrderNumber + '</div>' +
+              '<div class="doc-sub">' + escapeHtml(itemCountLabel) + '</div>' +
+              '<div class="doc-sub">' + escapeHtml(formatDateTime(latestDeliveryDate)) + '</div>' +
+            '</div>' +
+          '</header>' +
+
+          '<section class="panel">' +
+            '<div class="panel-head">' +
+              '<span>Equipamentos Entregues</span>' +
+              '<span>' + escapeHtml(itemCountLabel) + '</span>' +
+            '</div>' +
+            itemsHtml +
+            pendingHtml +
+          '</section>' +
+
+          '<section class="panel finance-panel">' +
+            '<div class="panel-head">Resumo Financeiro Consolidado</div>' +
+            '<table class="fin-table"><tbody>' +
+              financeRowsHtml +
+              '<tr class="total-row">' +
+                '<td>TOTAL PAGO NA NOTA</td>' +
+                '<td class="num">' + escapeHtml(formatMoney(grandTotal)) + '</td>' +
+              '</tr>' +
+            '</tbody></table>' +
+            '<div class="paid-strip">' +
+              '<span class="paid-strip-label">Situação</span>' +
+              (isAllFree
+                ? '<span class="paid-pill neutral">Devolução sem cobrança</span>'
+                : '<span class="paid-pill">Quitado na entrega</span>') +
+            '</div>' +
+          '</section>' +
+
+          warrantyHtml +
+
+          '<footer class="doc-footer">' +
+            '<span>Comprovante digital oficial · OS #' + safeOrderNumber + '</span>' +
+            '<span class="footer-brand">BenchOS</span>' +
+          '</footer>';
+      }
+
+      document.getElementById('printBtn').addEventListener('click', function () {
+        window.print();
+      });
+
+      function renderError(msg) {
+        document.getElementById('app').innerHTML =
+          '<div class="center-box">' +
+            '<h2 style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:18px">Comprovante não encontrado</h2>' +
+            '<p style="font-size:13px;color:#475569;max-width:320px">' + escapeHtml(msg) + '</p>' +
+          '</div>';
+      }
+
+      async function loadReceipt() {
+        if (!token) {
+          renderError('Link de comprovante inválido.');
+          return;
+        }
+        try {
+          const res = await fetch('/api/v1/public/orders/' + encodeURIComponent(token));
+          if (!res.ok) {
+            renderError('Ordem de serviço não encontrada ou link expirado.');
+            return;
+          }
+          const data = await res.json();
+          renderReceipt(data);
+        } catch (err) {
+          renderError('Não foi possível conectar à oficina. Tente atualizar a página.');
+        }
+      }
+
+      loadReceipt();
+    })();
+  </script>
+</body>
+</html>
