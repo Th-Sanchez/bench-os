@@ -6,6 +6,7 @@ import com.benchos.api.order.internal.entity.ServiceOrderItem;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ServiceOrderResponse(
@@ -22,13 +23,35 @@ public record ServiceOrderResponse(
         Instant updatedAt,
         List<ServiceOrderItemResponse> items
 ) {
+    public record ParentItemRef(UUID orderId, String tag) {
+    }
+
     public static ServiceOrderResponse from(
             ServiceOrder order,
             CustomerSnapshot customer,
             List<ServiceOrderItem> items
     ) {
+        return from(order, customer, items, Map.of());
+    }
+
+    public static ServiceOrderResponse from(
+            ServiceOrder order,
+            CustomerSnapshot customer,
+            List<ServiceOrderItem> items,
+            Map<UUID, ParentItemRef> parentRefsByItemId
+    ) {
         List<ServiceOrderItemResponse> itemResponses = items.stream()
-                .map(item -> ServiceOrderItemResponse.from(item, order.getOrderNumber()))
+                .map(item -> {
+                    ParentItemRef parentRef = item.getParentItemId() != null
+                            ? parentRefsByItemId.get(item.getParentItemId())
+                            : null;
+                    return ServiceOrderItemResponse.from(
+                            item,
+                            order.getOrderNumber(),
+                            parentRef != null ? parentRef.orderId() : null,
+                            parentRef != null ? parentRef.tag() : null
+                    );
+                })
                 .toList();
 
         return new ServiceOrderResponse(

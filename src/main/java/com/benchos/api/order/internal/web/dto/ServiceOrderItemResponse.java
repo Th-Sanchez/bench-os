@@ -33,10 +33,23 @@ public record ServiceOrderItemResponse(
         Instant finishedAt,
         Instant deliveredAt,
         Instant discardedAt,
+        UUID parentItemId,
+        UUID parentOrderId,
+        String parentItemTag,
+        boolean warrantyReturn,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static ServiceOrderItemResponse from(ServiceOrderItem item, long orderNumber) {
+        return from(item, orderNumber, null, null);
+    }
+
+    public static ServiceOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            UUID parentOrderId,
+            String parentItemTag
+    ) {
         return new ServiceOrderItemResponse(
                 item.getId(),
                 item.getItemIndex(),
@@ -61,6 +74,10 @@ public record ServiceOrderItemResponse(
                 item.getFinishedAt(),
                 item.getDeliveredAt(),
                 item.getDiscardedAt(),
+                item.getParentItemId(),
+                parentOrderId,
+                parentItemTag,
+                item.isWarrantyReturn(),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

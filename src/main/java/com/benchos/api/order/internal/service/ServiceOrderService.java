@@ -11,8 +11,10 @@ import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderItemRequest;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
+import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
+import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.security.SecurityUtils;
 import com.benchos.api.shared.tenant.TenantContext;
@@ -94,6 +96,42 @@ public class ServiceOrderService {
         return ServiceOrderResponse.from(savedOrder, customer, savedOrder.getItems());
     }
 
+    @Transactional
+    public ServiceOrderResponse openWarrantyReturn(
+            UUID parentOrderId,
+            UUID parentItemId,
+            CreateWarrantyReturnRequest request
+    ) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID currentUserId = SecurityUtils.requireCurrentUserId();
+
+        ServiceOrderItem parentItem = serviceOrderItemRepository
+                .findByIdAndServiceOrderIdAndTenantId(parentItemId, parentOrderId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order item not found"));
+
+        if (parentItem.getStatus() != ItemStatus.DELIVERED) {
+            throw new BusinessRuleException("Warranty return can only be opened for delivered items");
+        }
+
+        UUID customerId = parentItem.getServiceOrder().getCustomerId();
+        CustomerSnapshot customer = customerQuery.findAllByIds(List.of(customerId), tenantId).get(customerId);
+        if (customer == null) {
+            throw new ResourceNotFoundException("Customer not found");
+        }
+
+        int remainingDays = parentItem.remainingWarrantyDays(Instant.now());
+        long orderNumber = tenantSequenceService.nextOrderNumber(tenantId);
+        ServiceOrder returnOrder = new ServiceOrder(tenantId, customerId, currentUserId, orderNumber, request.notes());
+        returnOrder.addWarrantyReturnItem(parentItem, request.reportedIssue(), request.accessories(), remainingDays);
+
+        ServiceOrder savedOrder = serviceOrderRepository.save(returnOrder);
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = Map.of(
+                parentItem.getId(),
+                new ServiceOrderResponse.ParentItemRef(parentOrderId, parentItem.getTag())
+        );
+        return ServiceOrderResponse.from(savedOrder, customer, savedOrder.getItems(), parentRefs);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<ServiceOrderResponse> listOrders(
             Long orderNumber,
@@ -141,10 +179,11 @@ public class ServiceOrderService {
         List<UUID> orderIds = ordersPage.getContent().stream().map(ServiceOrder::getId).toList();
         Set<UUID> customerIds = ordersPage.getContent().stream().map(ServiceOrder::getCustomerId).collect(Collectors.toSet());
 
-        Map<UUID, List<ServiceOrderItem>> itemsByOrderId = serviceOrderItemRepository
-                .findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(tenantId, orderIds)
-                .stream()
+        List<ServiceOrderItem> allItems = serviceOrderItemRepository
+                .findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(tenantId, orderIds);
+        Map<UUID, List<ServiceOrderItem>> itemsByOrderId = allItems.stream()
                 .collect(Collectors.groupingBy(item -> item.getServiceOrder().getId()));
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, allItems);
 
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
 
@@ -152,7 +191,8 @@ public class ServiceOrderService {
                 .map(order -> ServiceOrderResponse.from(
                         order,
                         customersById.get(order.getCustomerId()),
-                        itemsByOrderId.getOrDefault(order.getId(), List.of())
+                        itemsByOrderId.getOrDefault(order.getId(), List.of()),
+                        parentRefs
                 ))
                 .toList();
 
@@ -167,8 +207,9 @@ public class ServiceOrderService {
 
         CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
                 .get(order.getCustomerId());
+        Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
 
-        return ServiceOrderResponse.from(order, customer, order.getItems());
+        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
     }
 
     @Transactional(readOnly = true)
@@ -283,6 +324,24 @@ public class ServiceOrderService {
                 .toList();
 
         return PageResponse.of(responses, itemsPage);
+    }
+
+    private Map<UUID, ServiceOrderResponse.ParentItemRef> resolveParentItemRefs(
+            UUID tenantId,
+            List<ServiceOrderItem> items
+    ) {
+        Set<UUID> parentIds = items.stream()
+                .map(ServiceOrderItem::getParentItemId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        return serviceOrderItemRepository.findAllByTenantIdAndIdIn(tenantId, parentIds).stream()
+                .collect(Collectors.toMap(
+                        ServiceOrderItem::getId,
+                        parent -> new ServiceOrderResponse.ParentItemRef(parent.getServiceOrder().getId(), parent.getTag())
+                ));
     }
 
     private static int clampPageSize(int size) {

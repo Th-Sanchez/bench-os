@@ -92,6 +92,36 @@ public class ServiceOrder extends TenantAwareEntity {
         return item;
     }
 
+    public ServiceOrderItem addWarrantyReturnItem(
+            ServiceOrderItem parentItem,
+            String reportedIssue,
+            String accessoriesOverride,
+            int carriedWarrantyDays
+    ) {
+        int nextIndex = this.items.size() + 1;
+        String resolvedAccessories = (accessoriesOverride != null && !accessoriesOverride.isBlank())
+                ? accessoriesOverride
+                : parentItem.getAccessories();
+        ServiceOrderItem item = new ServiceOrderItem(
+                getTenantId(),
+                this,
+                nextIndex,
+                parentItem.getApplianceType(),
+                parentItem.getBrand(),
+                parentItem.getModel(),
+                parentItem.getVoltage(),
+                parentItem.getSerialNumber(),
+                resolvedAccessories,
+                reportedIssue,
+                parentItem.getId(),
+                true,
+                carriedWarrantyDays
+        );
+        this.items.add(item);
+        touch();
+        return item;
+    }
+
     public void touch() {
         this.updatedAt = Instant.now();
     }

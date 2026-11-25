@@ -48,6 +48,9 @@ public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderIt
             @Param("itemIndex") int itemIndex
     );
 
+    @EntityGraph(attributePaths = "serviceOrder")
+    List<ServiceOrderItem> findAllByTenantIdAndIdIn(UUID tenantId, Collection<UUID> ids);
+
     List<ServiceOrderItem> findAllByTenantIdAndServiceOrderIdInOrderByServiceOrderIdAscItemIndexAsc(
             UUID tenantId,
             Collection<UUID> serviceOrderIds

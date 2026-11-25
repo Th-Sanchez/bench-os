@@ -29,6 +29,8 @@ public record OrderItemQueueResponse(
         BigDecimal totalPrice,
         LocalDate estimatedCompletionDate,
         Instant finishedAt,
+        UUID parentItemId,
+        boolean warrantyReturn,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -52,6 +54,8 @@ public record OrderItemQueueResponse(
                 item.getTotalPrice(),
                 item.getEstimatedCompletionDate(),
                 item.getFinishedAt(),
+                item.getParentItemId(),
+                item.isWarrantyReturn(),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

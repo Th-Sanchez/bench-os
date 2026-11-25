@@ -98,7 +98,7 @@ public class OrderItemLifecycleService {
         );
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
-        return ServiceOrderItemResponse.from(saved, saved.getServiceOrder().getOrderNumber());
+        return toItemResponse(saved, tenantId);
     }
 
     @Transactional
@@ -121,7 +121,7 @@ public class OrderItemLifecycleService {
         }
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
-        return ServiceOrderItemResponse.from(saved, saved.getServiceOrder().getOrderNumber());
+        return toItemResponse(saved, tenantId);
     }
 
     @Transactional
@@ -140,7 +140,7 @@ public class OrderItemLifecycleService {
 
         event.ifPresent(eventPublisher::publishEvent);
 
-        return ServiceOrderItemResponse.from(saved, saved.getServiceOrder().getOrderNumber());
+        return toItemResponse(saved, tenantId);
     }
 
     @Transactional(readOnly = true)
@@ -284,6 +284,28 @@ public class OrderItemLifecycleService {
                     "Attendants cannot perform technical status transitions (" + targetStatus + ")"
             );
         }
+    }
+
+    private ServiceOrderItemResponse toItemResponse(ServiceOrderItem item, UUID tenantId) {
+        UUID parentOrderId = null;
+        String parentItemTag = null;
+        if (item.getParentItemId() != null) {
+            List<ServiceOrderItem> parents = serviceOrderItemRepository.findAllByTenantIdAndIdIn(
+                    tenantId,
+                    List.of(item.getParentItemId())
+            );
+            if (!parents.isEmpty()) {
+                ServiceOrderItem parent = parents.getFirst();
+                parentOrderId = parent.getServiceOrder().getId();
+                parentItemTag = parent.getTag();
+            }
+        }
+        return ServiceOrderItemResponse.from(
+                item,
+                item.getServiceOrder().getOrderNumber(),
+                parentOrderId,
+                parentItemTag
+        );
     }
 
     private ServiceOrderItem findItemOrThrow(UUID orderId, UUID itemId, UUID tenantId) {
