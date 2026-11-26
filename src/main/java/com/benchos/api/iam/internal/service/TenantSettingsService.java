@@ -7,6 +7,7 @@ import com.benchos.api.iam.internal.entity.TenantSettings;
 import com.benchos.api.iam.internal.repository.TenantRepository;
 import com.benchos.api.iam.internal.repository.TenantSettingsRepository;
 import com.benchos.api.iam.internal.web.dto.TenantSettingsResponse;
+import com.benchos.api.iam.internal.web.dto.UpdateShopBrandingRequest;
 import com.benchos.api.iam.internal.web.dto.UpdateTenantSettingsRequest;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.tenant.TenantContext;
@@ -49,7 +50,11 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getIntakeChecklistTemplateMap(),
                 settings.getPixKey(),
                 settings.getPixReceiverName(),
-                settings.getPixReceiverCity()
+                settings.getPixReceiverCity(),
+                settings.getShopLogoDataUrl(),
+                settings.getShopAddress(),
+                settings.getBusinessHours(),
+                settings.getWarrantyTerms()
         );
     }
 
@@ -124,6 +129,20 @@ public class TenantSettingsService implements TenantSettingsQuery {
         UUID tenantId = TenantContext.requireCurrentTenant();
         TenantSettings settings = findOrThrow(tenantId);
         settings.resetIntakeChecklistTemplates();
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateShopBranding(UpdateShopBrandingRequest request) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateBranding(
+                request.shopLogoDataUrl(),
+                request.clearLogo(),
+                request.shopAddress(),
+                request.businessHours(),
+                request.warrantyTerms()
+        );
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
 

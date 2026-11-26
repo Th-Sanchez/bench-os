@@ -534,6 +534,26 @@
       font-weight: 700;
       color: #0F172A;
     }
+    .banner-brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .banner-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #FFFFFF;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+    .warranty-custom-terms {
+      color: #1E293B;
+      font-size: 11.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
 
     /* Loading & Empty States */
     .center-box {
@@ -712,6 +732,15 @@
         return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(trimmed);
       }
 
+      function sanitizeRasterDataUrl(raw) {
+        if (!raw || typeof raw !== 'string') return '';
+        const trimmed = raw.trim();
+        if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+          return trimmed;
+        }
+        return '';
+      }
+
       function renderReceipt(order) {
         const shopName = order.shopName || 'BenchOS';
         const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
@@ -853,11 +882,13 @@
                       return '<div class="w-list-row"><span><strong>#' + escapeHtml(e.item.tag) + '</strong> ' + escapeHtml(label) + '</span><span>' + e.warranty.warrantyDays + 'd · válida até <strong>' + escapeHtml(formatFullDate(e.warranty.expiryDate)) + '</strong></span></div>';
                     }).join('') +
                   '</div>') +
-              '<ol class="warranty-terms">' +
-                '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
-                '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
-                '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
-              '</ol>' +
+              (order.warrantyTerms && order.warrantyTerms.trim()
+                ? '<div class="warranty-custom-terms">' + escapeHtml(order.warrantyTerms.trim()) + '</div>'
+                : '<ol class="warranty-terms">' +
+                    '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
+                    '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
+                    '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
+                  '</ol>') +
             '</section>'
           : '<section class="warranty-box neutral">' +
               '<div class="warranty-top">' +
@@ -902,13 +933,20 @@
             '</section>'
           : '';
 
+        const safeLogoUrl = sanitizeRasterDataUrl(order.shopLogoDataUrl);
+
         app.innerHTML =
           '<header class="banner">' +
-            '<div>' +
-              '<div class="shop-eyebrow">COMPROVANTE DE ENTREGA & GARANTIA</div>' +
-              '<h1 class="shop-name">' + escapeHtml(shopName) + '</h1>' +
-              (order.shopPhone ? '<p class="shop-meta">Telefone / WhatsApp: ' + escapeHtml(formatPhoneDisplay(order.shopPhone)) + '</p>' : '') +
-              '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
+            '<div class="banner-brand-row">' +
+              (safeLogoUrl ? '<img class="banner-logo" src="' + safeLogoUrl + '" alt="Logo da oficina" />' : '') +
+              '<div>' +
+                '<div class="shop-eyebrow">COMPROVANTE DE ENTREGA & GARANTIA</div>' +
+                '<h1 class="shop-name">' + escapeHtml(shopName) + '</h1>' +
+                (order.shopPhone ? '<p class="shop-meta">Telefone / WhatsApp: ' + escapeHtml(formatPhoneDisplay(order.shopPhone)) + '</p>' : '') +
+                (order.shopAddress ? '<p class="shop-meta">' + escapeHtml(order.shopAddress) + '</p>' : '') +
+                (order.businessHours ? '<p class="shop-meta">Horário: ' + escapeHtml(order.businessHours) + '</p>' : '') +
+                '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
+              '</div>' +
             '</div>' +
             '<div class="doc-box">' +
               '<div class="doc-badge">OS #' + safeOrderNumber + '</div>' +

@@ -73,6 +73,18 @@ public class TenantSettings {
     @Column(name = "pix_receiver_city", length = 60)
     private String pixReceiverCity;
 
+    @Column(name = "shop_logo_data_url", columnDefinition = "TEXT")
+    private String shopLogoDataUrl;
+
+    @Column(name = "shop_address", length = 300)
+    private String shopAddress;
+
+    @Column(name = "business_hours", length = 200)
+    private String businessHours;
+
+    @Column(name = "warranty_terms", columnDefinition = "TEXT")
+    private String warrantyTerms;
+
     protected TenantSettings() {
     }
 
@@ -92,6 +104,10 @@ public class TenantSettings {
         settings.pixKey = null;
         settings.pixReceiverName = null;
         settings.pixReceiverCity = null;
+        settings.shopLogoDataUrl = null;
+        settings.shopAddress = null;
+        settings.businessHours = null;
+        settings.warrantyTerms = null;
         return settings;
     }
 
@@ -326,5 +342,44 @@ public class TenantSettings {
 
     public String getPixReceiverCity() {
         return pixReceiverCity;
+    }
+
+    public String getShopLogoDataUrl() {
+        return shopLogoDataUrl;
+    }
+
+    public String getShopAddress() {
+        return shopAddress;
+    }
+
+    public String getBusinessHours() {
+        return businessHours;
+    }
+
+    public String getWarrantyTerms() {
+        return warrantyTerms;
+    }
+
+    public void updateBranding(
+            String shopLogoDataUrl,
+            Boolean clearLogo,
+            String shopAddress,
+            String businessHours,
+            String warrantyTerms
+    ) {
+        if (Boolean.TRUE.equals(clearLogo)) {
+            this.shopLogoDataUrl = null;
+        } else if (shopLogoDataUrl != null) {
+            this.shopLogoDataUrl = ShopLogoValidator.normalizeAndValidate(shopLogoDataUrl);
+        }
+        if (shopAddress != null) {
+            this.shopAddress = normalizeOptionalText(shopAddress, 300, "Shop address");
+        }
+        if (businessHours != null) {
+            this.businessHours = normalizeOptionalText(businessHours, 200, "Business hours");
+        }
+        if (warrantyTerms != null) {
+            this.warrantyTerms = normalizeOptionalText(warrantyTerms, 3000, "Warranty terms");
+        }
     }
 }

@@ -621,6 +621,25 @@
       text-align: center;
       line-height: 1.45;
     }
+    .brand-logo-img {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #fff;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .shop-info-list {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
 
     .footer {
       text-align: center;
@@ -714,7 +733,7 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-icon" aria-hidden="true">
+        <div id="brandLogoWrap" class="brand-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
@@ -874,6 +893,15 @@
         }
       }
 
+      function sanitizeRasterDataUrl(raw) {
+        if (!raw || typeof raw !== 'string') return '';
+        const trimmed = raw.trim();
+        if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+          return trimmed;
+        }
+        return '';
+      }
+
       function renderOrder(order) {
         currentOrder = order;
         const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
@@ -882,6 +910,13 @@
         const osPill = document.getElementById('osPill');
         osPill.textContent = 'OS #' + safeOrderNumber;
         osPill.style.display = 'inline-block';
+
+        const safeLogoUrl = sanitizeRasterDataUrl(order.shopLogoDataUrl);
+        const logoWrap = document.getElementById('brandLogoWrap');
+        if (logoWrap && safeLogoUrl) {
+          logoWrap.className = '';
+          logoWrap.innerHTML = '<img class="brand-logo-img" src="' + safeLogoUrl + '" alt="Logo" />';
+        }
 
         const app = document.getElementById('app');
         const itemsHtml = (order.items || []).map(function (item) {
@@ -1121,6 +1156,12 @@
           '<section class="card" style="gap:6px">' +
             '<div style="font-weight:600;font-size:14px">Instruções de Retirada</div>' +
             '<p style="font-size:13px;color:var(--text-secondary);line-height:1.5">Quando o status estiver como <strong>Pronto p/ Retirada</strong>, apresente o número da ordem <strong style="font-family:\'JetBrains Mono\',monospace">#' + safeOrderNumber + '</strong> no balcão da oficina <strong>' + escapeHtml(order.shopName) + '</strong>.</p>' +
+            ((order.shopAddress || order.businessHours)
+              ? '<div class="shop-info-list">' +
+                  (order.shopAddress ? '<div><strong>Endereço:</strong> ' + escapeHtml(order.shopAddress) + '</div>' : '') +
+                  (order.businessHours ? '<div><strong>Horário:</strong> ' + escapeHtml(order.businessHours) + '</div>' : '') +
+                '</div>'
+              : '') +
           '</section>' +
           waBtnHtml +
           '<footer class="footer">' +

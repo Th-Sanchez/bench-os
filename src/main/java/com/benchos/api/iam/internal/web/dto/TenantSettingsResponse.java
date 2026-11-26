@@ -21,7 +21,11 @@ public record TenantSettingsResponse(
         Map<String, List<String>> intakeChecklistTemplates,
         String pixKey,
         String pixReceiverName,
-        String pixReceiverCity
+        String pixReceiverCity,
+        String shopLogoDataUrl,
+        String shopAddress,
+        String businessHours,
+        String warrantyTerms
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -38,7 +42,11 @@ public record TenantSettingsResponse(
                 settings.getIntakeChecklistTemplateMap(),
                 settings.getPixKey(),
                 settings.getPixReceiverName(),
-                settings.getPixReceiverCity()
+                settings.getPixReceiverCity(),
+                settings.getShopLogoDataUrl(),
+                settings.getShopAddress(),
+                settings.getBusinessHours(),
+                settings.getWarrantyTerms()
         );
     }
 }
