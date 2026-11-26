@@ -12,12 +12,16 @@ import com.benchos.api.order.OrderItemDeliveredEvent;
 import com.benchos.api.order.PaymentPart;
 import com.benchos.api.order.WhatsappMessageStage;
 import com.benchos.api.order.internal.config.PublicTrackingProperties;
+import com.benchos.api.order.internal.entity.QuoteOption;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
+import com.benchos.api.order.internal.repository.QuoteOptionRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.AssignTechnicianRequest;
 import com.benchos.api.order.internal.web.dto.DeliverItemRequest;
+import com.benchos.api.order.internal.web.dto.QuoteOptionRequest;
+import com.benchos.api.order.internal.web.dto.QuoteOptionResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderItemResponse;
 import com.benchos.api.order.internal.web.dto.TransitionItemStatusRequest;
 import com.benchos.api.order.internal.web.dto.UpdateItemQuoteRequest;
@@ -67,6 +71,7 @@ public class OrderItemLifecycleService {
 
     private final ServiceOrderRepository serviceOrderRepository;
     private final ServiceOrderItemRepository serviceOrderItemRepository;
+    private final QuoteOptionRepository quoteOptionRepository;
     private final TenantSettingsQuery tenantSettingsQuery;
     private final CustomerQuery customerQuery;
     private final UserDirectoryQuery userDirectoryQuery;
@@ -76,6 +81,7 @@ public class OrderItemLifecycleService {
     public OrderItemLifecycleService(
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
+            QuoteOptionRepository quoteOptionRepository,
             TenantSettingsQuery tenantSettingsQuery,
             CustomerQuery customerQuery,
             UserDirectoryQuery userDirectoryQuery,
@@ -84,6 +90,7 @@ public class OrderItemLifecycleService {
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
+        this.quoteOptionRepository = quoteOptionRepository;
         this.tenantSettingsQuery = tenantSettingsQuery;
         this.customerQuery = customerQuery;
         this.userDirectoryQuery = userDirectoryQuery;
@@ -95,16 +102,69 @@ public class OrderItemLifecycleService {
     public ServiceOrderItemResponse updateQuote(UUID orderId, UUID itemId, UpdateItemQuoteRequest request) {
         UUID tenantId = TenantContext.requireCurrentTenant();
         ServiceOrderItem item = findItemForUpdateOrThrow(orderId, itemId, tenantId);
+        Instant now = Instant.now();
 
-        item.updateQuote(
-                request.technicalDiagnosis(),
-                request.laborCost(),
-                request.partsCost(),
-                request.partsCostActual(),
-                request.discount(),
-                request.warrantyDays(),
-                Instant.now()
-        );
+        List<QuoteOptionRequest> requestedOptions = request.quoteOptions();
+        if (requestedOptions != null && !requestedOptions.isEmpty()) {
+            // Sync primary item quote fields from the recommended (or first) option so
+            // single-price displays, WhatsApp messages, and bench queue always have a valid value
+            QuoteOptionRequest primary = requestedOptions.stream()
+                    .filter(opt -> Boolean.TRUE.equals(opt.recommended()))
+                    .findFirst()
+                    .orElse(requestedOptions.getFirst());
+
+            item.updateQuote(
+                    request.technicalDiagnosis(),
+                    primary.laborCost(),
+                    primary.partsCost(),
+                    primary.partsCostActual(),
+                    primary.discount() != null ? primary.discount() : BigDecimal.ZERO,
+                    primary.warrantyDays() != null ? primary.warrantyDays() : request.warrantyDays(),
+                    now
+            );
+
+            // Clear FK reference before deleting existing options
+            serviceOrderItemRepository.saveAndFlush(item);
+            quoteOptionRepository.deleteAllByTenantIdAndServiceOrderItemId(tenantId, item.getId());
+            quoteOptionRepository.flush();
+
+            boolean hasRecommended = requestedOptions.stream().anyMatch(o -> Boolean.TRUE.equals(o.recommended()));
+            List<QuoteOption> created = new java.util.ArrayList<>(requestedOptions.size());
+            for (int i = 0; i < requestedOptions.size(); i++) {
+                QuoteOptionRequest optReq = requestedOptions.get(i);
+                boolean isRec = hasRecommended ? Boolean.TRUE.equals(optReq.recommended()) : (i == 0);
+                created.add(new QuoteOption(
+                        tenantId,
+                        item.getId(),
+                        i + 1,
+                        optReq.label(),
+                        optReq.description(),
+                        optReq.laborCost(),
+                        optReq.partsCost(),
+                        optReq.partsCostActual(),
+                        optReq.discount(),
+                        optReq.warrantyDays() != null ? optReq.warrantyDays() : request.warrantyDays(),
+                        isRec,
+                        now
+                ));
+            }
+            quoteOptionRepository.saveAllAndFlush(created);
+        } else {
+            item.updateQuote(
+                    request.technicalDiagnosis(),
+                    request.laborCost(),
+                    request.partsCost(),
+                    request.partsCostActual(),
+                    request.discount(),
+                    request.warrantyDays(),
+                    now
+            );
+            serviceOrderItemRepository.saveAndFlush(item);
+            if (requestedOptions != null) {
+                quoteOptionRepository.deleteAllByTenantIdAndServiceOrderItemId(tenantId, item.getId());
+                quoteOptionRepository.flush();
+            }
+        }
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
         return toItemResponse(saved, tenantId);
@@ -125,6 +185,24 @@ public class OrderItemLifecycleService {
             if (request.status() == ItemStatus.APPROVED) {
                 TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(tenantId);
                 estimatedDate = LocalDate.now(ZoneOffset.UTC).plusDays(settings.defaultEstimatedDays());
+
+                List<QuoteOption> options = quoteOptionRepository
+                        .findAllByTenantIdAndServiceOrderItemIdOrderByOptionIndexAsc(tenantId, item.getId());
+                if (!options.isEmpty()) {
+                    QuoteOption chosen;
+                    if (request.quoteOptionId() != null) {
+                        chosen = options.stream()
+                                .filter(opt -> opt.getId().equals(request.quoteOptionId()))
+                                .findFirst()
+                                .orElseThrow(() -> new BusinessRuleException("Selected quote option not found for this item"));
+                    } else {
+                        chosen = options.stream()
+                                .filter(QuoteOption::isRecommended)
+                                .findFirst()
+                                .orElse(options.getFirst());
+                    }
+                    item.applySelectedQuoteOption(chosen, now);
+                }
             }
             item.transitionTo(request.status(), estimatedDate, request.cancellationReason(), now);
         }
@@ -384,13 +462,19 @@ public class OrderItemLifecycleService {
             }
         }
         boolean includeCommission = "OWNER".equals(SecurityUtils.requireCurrentUser().role());
+        List<QuoteOptionResponse> quoteOptions = quoteOptionRepository
+                .findAllByTenantIdAndServiceOrderItemIdOrderByOptionIndexAsc(tenantId, item.getId())
+                .stream()
+                .map(QuoteOptionResponse::from)
+                .toList();
         return ServiceOrderItemResponse.from(
                 item,
                 item.getServiceOrder().getOrderNumber(),
                 parentOrderId,
                 parentItemTag,
                 technicianName,
-                includeCommission
+                includeCommission,
+                quoteOptions
         );
     }
 

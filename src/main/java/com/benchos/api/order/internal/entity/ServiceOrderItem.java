@@ -140,6 +140,12 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "commission_amount", precision = 10, scale = 2)
     private BigDecimal commissionAmount;
 
+    @Column(name = "selected_quote_option_id")
+    private UUID selectedQuoteOptionId;
+
+    @Column(name = "selected_quote_option_label", length = 120)
+    private String selectedQuoteOptionLabel;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -344,7 +350,29 @@ public class ServiceOrderItem extends TenantAwareEntity {
         if (warrantyDays != null) {
             this.warrantyDays = warrantyDays;
         }
+        this.selectedQuoteOptionId = null;
+        this.selectedQuoteOptionLabel = null;
         touch(now);
+    }
+
+    public void applySelectedQuoteOption(QuoteOption option, Instant now) {
+        if (option == null) {
+            return;
+        }
+        this.laborCost = option.getLaborCost();
+        this.partsCost = option.getPartsCost();
+        this.partsCostActual = option.getPartsCostActual();
+        this.discount = option.getDiscount();
+        this.totalPrice = option.getTotalPrice();
+        this.warrantyDays = option.getWarrantyDays();
+        this.selectedQuoteOptionId = option.getId();
+        this.selectedQuoteOptionLabel = option.getLabel();
+        touch(now != null ? now : Instant.now());
+    }
+
+    public void clearSelectedQuoteOption() {
+        this.selectedQuoteOptionId = null;
+        this.selectedQuoteOptionLabel = null;
     }
 
     public BigDecimal getPartsCostActual() {
@@ -457,6 +485,8 @@ public class ServiceOrderItem extends TenantAwareEntity {
                 if (previousStatus.isQuoteLockedAfterApproval()) {
                     this.approvedAt = null;
                     this.estimatedCompletionDate = null;
+                    this.selectedQuoteOptionId = null;
+                    this.selectedQuoteOptionLabel = null;
                 }
             }
             case REJECTED -> this.rejectedAt = now;
@@ -753,6 +783,14 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public BigDecimal getCommissionAmount() {
         return commissionAmount;
+    }
+
+    public UUID getSelectedQuoteOptionId() {
+        return selectedQuoteOptionId;
+    }
+
+    public String getSelectedQuoteOptionLabel() {
+        return selectedQuoteOptionLabel;
     }
 
     public Instant getDiscardedAt() {

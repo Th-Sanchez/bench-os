@@ -1,6 +1,7 @@
 package com.benchos.api.order.internal.web;
 
 import com.benchos.api.order.internal.service.PublicOrderService;
+import com.benchos.api.order.internal.web.dto.ApprovePublicQuoteRequest;
 import com.benchos.api.order.internal.web.dto.PublicOrderResponse;
 import com.benchos.api.order.internal.web.dto.SubmitOrderRatingRequest;
 import jakarta.validation.Valid;
@@ -36,9 +37,11 @@ public class PublicOrderController {
     @PostMapping("/{publicToken}/items/{itemIndex}/approve")
     public ResponseEntity<PublicOrderResponse> approveItem(
             @PathVariable UUID publicToken,
-            @PathVariable int itemIndex
+            @PathVariable int itemIndex,
+            @RequestBody(required = false) ApprovePublicQuoteRequest request
     ) {
-        return okPrivate(publicOrderService.approveItem(publicToken, itemIndex));
+        UUID quoteOptionId = request != null ? request.quoteOptionId() : null;
+        return okPrivate(publicOrderService.approveItem(publicToken, itemIndex, quoteOptionId));
     }
 
     @PostMapping("/{publicToken}/items/{itemIndex}/reject")

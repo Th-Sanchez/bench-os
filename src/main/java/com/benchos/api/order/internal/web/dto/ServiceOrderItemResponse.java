@@ -48,11 +48,14 @@ public record ServiceOrderItemResponse(
         String assignedTechnicianName,
         BigDecimal commissionPercent,
         BigDecimal commissionAmount,
+        UUID selectedQuoteOptionId,
+        String selectedQuoteOptionLabel,
+        List<QuoteOptionResponse> quoteOptions,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static ServiceOrderItemResponse from(ServiceOrderItem item, long orderNumber) {
-        return from(item, orderNumber, null, null, null, false);
+        return from(item, orderNumber, null, null, null, false, List.of());
     }
 
     public static ServiceOrderItemResponse from(
@@ -61,7 +64,7 @@ public record ServiceOrderItemResponse(
             UUID parentOrderId,
             String parentItemTag
     ) {
-        return from(item, orderNumber, parentOrderId, parentItemTag, null, false);
+        return from(item, orderNumber, parentOrderId, parentItemTag, null, false, List.of());
     }
 
     public static ServiceOrderItemResponse from(
@@ -71,6 +74,18 @@ public record ServiceOrderItemResponse(
             String parentItemTag,
             String assignedTechnicianName,
             boolean includeCommission
+    ) {
+        return from(item, orderNumber, parentOrderId, parentItemTag, assignedTechnicianName, includeCommission, List.of());
+    }
+
+    public static ServiceOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            UUID parentOrderId,
+            String parentItemTag,
+            String assignedTechnicianName,
+            boolean includeCommission,
+            List<QuoteOptionResponse> quoteOptions
     ) {
         return new ServiceOrderItemResponse(
                 item.getId(),
@@ -109,6 +124,9 @@ public record ServiceOrderItemResponse(
                 assignedTechnicianName,
                 includeCommission ? item.getCommissionPercent() : null,
                 includeCommission ? item.getCommissionAmount() : null,
+                item.getSelectedQuoteOptionId(),
+                item.getSelectedQuoteOptionLabel(),
+                quoteOptions == null ? List.of() : List.copyOf(quoteOptions),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

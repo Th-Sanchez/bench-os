@@ -8,8 +8,10 @@ import com.benchos.api.iam.TenantSettingsSnapshot;
 import com.benchos.api.iam.UserDirectoryQuery;
 import com.benchos.api.iam.UserSnapshot;
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.internal.entity.QuoteOption;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
+import com.benchos.api.order.internal.repository.QuoteOptionRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderItemRequest;
@@ -17,6 +19,7 @@ import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
 import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.MonthlyCommissionReportResponse;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
+import com.benchos.api.order.internal.web.dto.QuoteOptionResponse;
 import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
 import com.benchos.api.order.internal.web.dto.WorkshopAnalyticsResponse;
@@ -62,6 +65,7 @@ public class ServiceOrderService {
 
     private final ServiceOrderRepository serviceOrderRepository;
     private final ServiceOrderItemRepository serviceOrderItemRepository;
+    private final QuoteOptionRepository quoteOptionRepository;
     private final TenantSequenceService tenantSequenceService;
     private final CustomerQuery customerQuery;
     private final TenantSettingsQuery tenantSettingsQuery;
@@ -70,6 +74,7 @@ public class ServiceOrderService {
     public ServiceOrderService(
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
+            QuoteOptionRepository quoteOptionRepository,
             TenantSequenceService tenantSequenceService,
             CustomerQuery customerQuery,
             TenantSettingsQuery tenantSettingsQuery,
@@ -77,6 +82,7 @@ public class ServiceOrderService {
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
+        this.quoteOptionRepository = quoteOptionRepository;
         this.tenantSequenceService = tenantSequenceService;
         this.customerQuery = customerQuery;
         this.tenantSettingsQuery = tenantSettingsQuery;
@@ -200,6 +206,7 @@ public class ServiceOrderService {
                 .collect(Collectors.groupingBy(item -> item.getServiceOrder().getId()));
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, allItems);
         Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, allItems);
+        Map<UUID, List<QuoteOptionResponse>> quoteOptionsByItemId = resolveQuoteOptions(tenantId, allItems);
         boolean includeCommission = isCurrentUserOwner();
 
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
@@ -211,7 +218,8 @@ public class ServiceOrderService {
                         itemsByOrderId.getOrDefault(order.getId(), List.of()),
                         parentRefs,
                         technicianNames,
-                        includeCommission
+                        includeCommission,
+                        quoteOptionsByItemId
                 ))
                 .toList();
 
@@ -228,6 +236,7 @@ public class ServiceOrderService {
                 .get(order.getCustomerId());
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
         Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, order.getItems());
+        Map<UUID, List<QuoteOptionResponse>> quoteOptionsByItemId = resolveQuoteOptions(tenantId, order.getItems());
 
         return ServiceOrderResponse.from(
                 order,
@@ -235,7 +244,8 @@ public class ServiceOrderService {
                 order.getItems(),
                 parentRefs,
                 technicianNames,
-                isCurrentUserOwner()
+                isCurrentUserOwner(),
+                quoteOptionsByItemId
         );
     }
 
@@ -249,6 +259,7 @@ public class ServiceOrderService {
                 .get(order.getCustomerId());
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
         Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, order.getItems());
+        Map<UUID, List<QuoteOptionResponse>> quoteOptionsByItemId = resolveQuoteOptions(tenantId, order.getItems());
 
         return ServiceOrderResponse.from(
                 order,
@@ -256,7 +267,8 @@ public class ServiceOrderService {
                 order.getItems(),
                 parentRefs,
                 technicianNames,
-                isCurrentUserOwner()
+                isCurrentUserOwner(),
+                quoteOptionsByItemId
         );
     }
 
@@ -851,6 +863,20 @@ public class ServiceOrderService {
         }
         return userDirectoryQuery.findAllByIds(techIds, tenantId).entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().name()));
+    }
+
+    private Map<UUID, List<QuoteOptionResponse>> resolveQuoteOptions(UUID tenantId, List<ServiceOrderItem> items) {
+        List<UUID> itemIds = items.stream().map(ServiceOrderItem::getId).toList();
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        return quoteOptionRepository
+                .findAllByTenantIdAndServiceOrderItemIdInOrderByServiceOrderItemIdAscOptionIndexAsc(tenantId, itemIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        QuoteOption::getServiceOrderItemId,
+                        Collectors.mapping(QuoteOptionResponse::from, Collectors.toList())
+                ));
     }
 
     private static boolean isCurrentUserOwner() {

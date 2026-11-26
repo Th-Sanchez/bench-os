@@ -54,6 +54,18 @@ public record ServiceOrderResponse(
             Map<UUID, String> technicianNamesById,
             boolean includeCommission
     ) {
+        return from(order, customer, items, parentRefsByItemId, technicianNamesById, includeCommission, Map.of());
+    }
+
+    public static ServiceOrderResponse from(
+            ServiceOrder order,
+            CustomerSnapshot customer,
+            List<ServiceOrderItem> items,
+            Map<UUID, ParentItemRef> parentRefsByItemId,
+            Map<UUID, String> technicianNamesById,
+            boolean includeCommission,
+            Map<UUID, List<QuoteOptionResponse>> quoteOptionsByItemId
+    ) {
         List<ServiceOrderItemResponse> itemResponses = items.stream()
                 .map(item -> {
                     ParentItemRef parentRef = item.getParentItemId() != null
@@ -68,7 +80,8 @@ public record ServiceOrderResponse(
                             parentRef != null ? parentRef.orderId() : null,
                             parentRef != null ? parentRef.tag() : null,
                             techName,
-                            includeCommission
+                            includeCommission,
+                            quoteOptionsByItemId.getOrDefault(item.getId(), List.of())
                     );
                 })
                 .toList();

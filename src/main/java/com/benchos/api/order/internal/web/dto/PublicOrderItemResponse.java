@@ -35,13 +35,25 @@ public record PublicOrderItemResponse(
         String deliverySignatureSvg,
         Instant discardedAt,
         List<PublicOrderItemPhotoResponse> photos,
-        List<String> careTips
+        List<String> careTips,
+        String selectedQuoteOptionLabel,
+        List<PublicQuoteOptionResponse> quoteOptions
 ) {
     public static PublicOrderItemResponse from(
             ServiceOrderItem item,
             long orderNumber,
             List<PublicOrderItemPhotoResponse> photos,
             List<String> careTips
+    ) {
+        return from(item, orderNumber, photos, careTips, List.of());
+    }
+
+    public static PublicOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            List<PublicOrderItemPhotoResponse> photos,
+            List<String> careTips,
+            List<PublicQuoteOptionResponse> quoteOptions
     ) {
         return new PublicOrderItemResponse(
                 item.getItemIndex(),
@@ -65,7 +77,9 @@ public record PublicOrderItemResponse(
                 item.getDeliverySignatureSvg(),
                 item.getDiscardedAt(),
                 photos,
-                careTips == null ? List.of() : List.copyOf(careTips)
+                careTips == null ? List.of() : List.copyOf(careTips),
+                item.getSelectedQuoteOptionLabel(),
+                quoteOptions == null ? List.of() : List.copyOf(quoteOptions)
         );
     }
 }
