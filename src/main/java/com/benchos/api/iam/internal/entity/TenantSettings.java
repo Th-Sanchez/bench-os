@@ -1,6 +1,7 @@
 package com.benchos.api.iam.internal.entity;
 
 import com.benchos.api.shared.exception.BusinessRuleException;
+import com.benchos.api.shared.pix.PixBrCodeGenerator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -63,6 +64,15 @@ public class TenantSettings {
     @Column(name = "intake_checklist_templates", columnDefinition = "TEXT")
     private String intakeChecklistTemplates;
 
+    @Column(name = "pix_key", length = 120)
+    private String pixKey;
+
+    @Column(name = "pix_receiver_name", length = 60)
+    private String pixReceiverName;
+
+    @Column(name = "pix_receiver_city", length = 60)
+    private String pixReceiverCity;
+
     protected TenantSettings() {
     }
 
@@ -79,6 +89,9 @@ public class TenantSettings {
         settings.googleReviewUrl = null;
         settings.deliverySignatureEnabled = DEFAULT_DELIVERY_SIGNATURE_ENABLED;
         settings.intakeChecklistTemplates = null;
+        settings.pixKey = null;
+        settings.pixReceiverName = null;
+        settings.pixReceiverCity = null;
         return settings;
     }
 
@@ -133,6 +146,34 @@ public class TenantSettings {
             String googleReviewUrl,
             Boolean deliverySignatureEnabled
     ) {
+        update(
+                defaultLaborCost,
+                defaultEstimatedDays,
+                abandonmentDays,
+                whatsappIntakeTemplate,
+                whatsappQuoteTemplate,
+                whatsappReadyTemplate,
+                googleReviewUrl,
+                deliverySignatureEnabled,
+                null,
+                null,
+                null
+        );
+    }
+
+    public void update(
+            BigDecimal defaultLaborCost,
+            int defaultEstimatedDays,
+            int abandonmentDays,
+            String whatsappIntakeTemplate,
+            String whatsappQuoteTemplate,
+            String whatsappReadyTemplate,
+            String googleReviewUrl,
+            Boolean deliverySignatureEnabled,
+            String pixKey,
+            String pixReceiverName,
+            String pixReceiverCity
+    ) {
         this.defaultLaborCost = defaultLaborCost;
         this.defaultEstimatedDays = defaultEstimatedDays;
         this.abandonmentDays = abandonmentDays;
@@ -149,6 +190,26 @@ public class TenantSettings {
         if (deliverySignatureEnabled != null) {
             this.deliverySignatureEnabled = deliverySignatureEnabled;
         }
+        if (pixKey != null) {
+            this.pixKey = PixBrCodeGenerator.normalizeAndValidatePixKey(pixKey);
+        }
+        if (pixReceiverName != null) {
+            this.pixReceiverName = normalizeOptionalText(pixReceiverName, 60, "Pix receiver name");
+        }
+        if (pixReceiverCity != null) {
+            this.pixReceiverCity = normalizeOptionalText(pixReceiverCity, 60, "Pix receiver city");
+        }
+    }
+
+    private static String normalizeOptionalText(String raw, int maxLength, String fieldName) {
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > maxLength) {
+            throw new BusinessRuleException(fieldName + " must be at most " + maxLength + " characters");
+        }
+        return trimmed;
     }
 
     private static String normalizeAndValidateUrl(String rawUrl) {
@@ -253,5 +314,17 @@ public class TenantSettings {
 
     public void resetIntakeChecklistTemplates() {
         this.intakeChecklistTemplates = null;
+    }
+
+    public String getPixKey() {
+        return pixKey;
+    }
+
+    public String getPixReceiverName() {
+        return pixReceiverName;
+    }
+
+    public String getPixReceiverCity() {
+        return pixReceiverCity;
     }
 }

@@ -19,6 +19,9 @@ public record TenantSettingsSnapshot(
         List<String> customApplianceTypes,
         String googleReviewUrl,
         boolean deliverySignatureEnabled,
-        Map<String, List<String>> intakeChecklistTemplates
+        Map<String, List<String>> intakeChecklistTemplates,
+        String pixKey,
+        String pixReceiverName,
+        String pixReceiverCity
 ) {
 }

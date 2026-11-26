@@ -2,6 +2,7 @@ package com.benchos.api.order.internal.web.dto;
 
 import com.benchos.api.order.internal.entity.ServiceOrder;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,9 @@ public record PublicOrderResponse(
         String shopName,
         String shopPhone,
         String googleReviewUrl,
+        BigDecimal pixAmount,
+        String pixPayload,
+        String pixQrSvg,
         long orderNumber,
         Instant createdAt,
         Integer customerRating,
@@ -27,6 +31,9 @@ public record PublicOrderResponse(
             String shopName,
             String shopPhone,
             String googleReviewUrl,
+            BigDecimal pixAmount,
+            String pixPayload,
+            String pixQrSvg,
             Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId
     ) {
         List<PublicOrderItemResponse> itemResponses = order.getItems().stream()
@@ -40,6 +47,9 @@ public record PublicOrderResponse(
                 shopName,
                 shopPhone,
                 googleReviewUrl,
+                pixAmount,
+                pixPayload,
+                pixQrSvg,
                 order.getOrderNumber(),
                 order.getCreatedAt(),
                 order.getCustomerRating(),

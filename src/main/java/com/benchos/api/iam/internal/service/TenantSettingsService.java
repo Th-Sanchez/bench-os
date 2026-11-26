@@ -46,7 +46,10 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getCustomApplianceTypeList(),
                 settings.getGoogleReviewUrl(),
                 settings.isDeliverySignatureEnabled(),
-                settings.getIntakeChecklistTemplateMap()
+                settings.getIntakeChecklistTemplateMap(),
+                settings.getPixKey(),
+                settings.getPixReceiverName(),
+                settings.getPixReceiverCity()
         );
     }
 
@@ -84,7 +87,10 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.whatsappQuoteTemplate(),
                 request.whatsappReadyTemplate(),
                 request.googleReviewUrl(),
-                request.deliverySignatureEnabled()
+                request.deliverySignatureEnabled(),
+                request.pixKey(),
+                request.pixReceiverName(),
+                request.pixReceiverCity()
         );
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }

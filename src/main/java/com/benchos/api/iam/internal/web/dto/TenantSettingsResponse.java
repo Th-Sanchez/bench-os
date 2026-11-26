@@ -18,7 +18,10 @@ public record TenantSettingsResponse(
         List<String> customApplianceTypes,
         String googleReviewUrl,
         boolean deliverySignatureEnabled,
-        Map<String, List<String>> intakeChecklistTemplates
+        Map<String, List<String>> intakeChecklistTemplates,
+        String pixKey,
+        String pixReceiverName,
+        String pixReceiverCity
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -32,7 +35,10 @@ public record TenantSettingsResponse(
                 settings.getCustomApplianceTypeList(),
                 settings.getGoogleReviewUrl(),
                 settings.isDeliverySignatureEnabled(),
-                settings.getIntakeChecklistTemplateMap()
+                settings.getIntakeChecklistTemplateMap(),
+                settings.getPixKey(),
+                settings.getPixReceiverName(),
+                settings.getPixReceiverCity()
         );
     }
 }

@@ -122,7 +122,7 @@ class DeliverySignatureAndReviewIntegrationTest {
                         ))))
                 .andExpect(status().is(422));
 
-        // Configure valid Google Business review URL and enable digital pickup signature
+        // Configure valid Google Business review URL, Pix key, and enable digital pickup signature
         String googleUrl = "https://g.page/r/OficinaTeste123/review";
         mockMvc.perform(put("/api/v1/tenant/settings")
                         .header("Authorization", "Bearer " + token)
@@ -133,11 +133,15 @@ class DeliverySignatureAndReviewIntegrationTest {
                                 "abandonmentDays", 180,
                                 "whatsappQuoteTemplate", "Template {trackingUrl}",
                                 "googleReviewUrl", googleUrl,
-                                "deliverySignatureEnabled", true
+                                "deliverySignatureEnabled", true,
+                                "pixKey", "12345678000199",
+                                "pixReceiverName", "Oficina Digital",
+                                "pixReceiverCity", "Sao Paulo"
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.googleReviewUrl").value(googleUrl))
-                .andExpect(jsonPath("$.deliverySignatureEnabled").value(true));
+                .andExpect(jsonPath("$.deliverySignatureEnabled").value(true))
+                .andExpect(jsonPath("$.pixKey").value("12345678000199"));
 
         UUID customerId = createCustomer(token);
         JsonNode order = createOrder(token, customerId);
@@ -168,6 +172,13 @@ class DeliverySignatureAndReviewIntegrationTest {
         transition(token, orderId, itemId, "APPROVED");
         transition(token, orderId, itemId, "IN_REPAIR");
         transition(token, orderId, itemId, "READY_FOR_PICKUP");
+
+        // While item is READY_FOR_PICKUP with Pix key configured, public tracking exposes Pix BR Code & QR SVG
+        mockMvc.perform(get("/api/v1/public/orders/{publicToken}", publicToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pixAmount").value(100.0))
+                .andExpect(jsonPath("$.pixPayload").value(containsString("br.gov.bcb.pix")))
+                .andExpect(jsonPath("$.pixQrSvg").value(containsString("<svg ")));
 
         // Unsafe XSS SVG signature is rejected (422)
         mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/deliver", orderId, itemId)

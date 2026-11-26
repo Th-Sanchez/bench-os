@@ -16,6 +16,9 @@ public record UpdateTenantSettingsRequest(
         String whatsappIntakeTemplate,
         String whatsappReadyTemplate,
         @Size(max = 500) String googleReviewUrl,
-        Boolean deliverySignatureEnabled
+        Boolean deliverySignatureEnabled,
+        @Size(max = 120) String pixKey,
+        @Size(max = 60) String pixReceiverName,
+        @Size(max = 60) String pixReceiverCity
 ) {
 }
