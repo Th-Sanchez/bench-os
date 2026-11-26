@@ -38,6 +38,9 @@ public class FinancialTransaction extends TenantAwareEntity {
     @Column(name = "service_order_item_id")
     private UUID serviceOrderItemId;
 
+    @Column(name = "part_request_id")
+    private UUID partRequestId;
+
     @Column(name = "supplier_id")
     private UUID supplierId;
 
@@ -72,6 +75,7 @@ public class FinancialTransaction extends TenantAwareEntity {
             TransactionType type,
             TransactionCategory category,
             UUID serviceOrderItemId,
+            UUID partRequestId,
             UUID supplierId,
             String description,
             BigDecimal amount,
@@ -86,6 +90,7 @@ public class FinancialTransaction extends TenantAwareEntity {
         this.type = type;
         this.category = category;
         this.serviceOrderItemId = serviceOrderItemId;
+        this.partRequestId = partRequestId;
         this.supplierId = supplierId;
         this.description = description.trim();
         this.amount = amount;
@@ -116,6 +121,51 @@ public class FinancialTransaction extends TenantAwareEntity {
                 TransactionType.INCOME,
                 TransactionCategory.REPAIR_PAYMENT,
                 serviceOrderItemId,
+                null,
+                null,
+                description,
+                scaledAmount,
+                paymentMethod,
+                TransactionStatus.PAID,
+                null,
+                effectivePaidAt,
+                Instant.now()
+        );
+    }
+
+    public static FinancialTransaction partsPurchaseExpense(
+            UUID tenantId,
+            UUID serviceOrderItemId,
+            UUID partRequestId,
+            long orderNumber,
+            int itemIndex,
+            String partName,
+            int quantity,
+            String supplierName,
+            BigDecimal amount,
+            TransactionPaymentMethod paymentMethod,
+            Instant paidAt
+    ) {
+        if (paymentMethod == TransactionPaymentMethod.STORE_CREDIT) {
+            throw new BusinessRuleException("Automatic part purchase expenses cannot use STORE_CREDIT");
+        }
+        BigDecimal scaledAmount = requirePositiveAmount(amount);
+        Instant effectivePaidAt = paidAt != null ? paidAt : Instant.now();
+        String qtyPrefix = quantity > 1 ? quantity + "x " : "";
+        String supplierSuffix = (supplierName != null && !supplierName.isBlank())
+                ? " (" + supplierName.trim() + ")"
+                : "";
+        String rawDescription = "Peça " + qtyPrefix + partName.trim()
+                + " - OS #" + orderNumber + "-" + itemIndex + supplierSuffix;
+        String description = rawDescription.length() > 255
+                ? rawDescription.substring(0, 255)
+                : rawDescription;
+        return new FinancialTransaction(
+                tenantId,
+                TransactionType.EXPENSE,
+                TransactionCategory.PARTS_PURCHASE,
+                serviceOrderItemId,
+                partRequestId,
                 null,
                 description,
                 scaledAmount,
@@ -165,6 +215,7 @@ public class FinancialTransaction extends TenantAwareEntity {
                 type,
                 category,
                 serviceOrderItemId,
+                null,
                 supplierId,
                 description,
                 scaledAmount,
@@ -218,6 +269,10 @@ public class FinancialTransaction extends TenantAwareEntity {
 
     public UUID getServiceOrderItemId() {
         return serviceOrderItemId;
+    }
+
+    public UUID getPartRequestId() {
+        return partRequestId;
     }
 
     public UUID getSupplierId() {

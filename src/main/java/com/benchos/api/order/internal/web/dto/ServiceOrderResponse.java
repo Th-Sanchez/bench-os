@@ -43,16 +43,45 @@ public record ServiceOrderResponse(
             List<ServiceOrderItem> items,
             Map<UUID, ParentItemRef> parentRefsByItemId
     ) {
+        return from(order, customer, items, parentRefsByItemId, Map.of(), false);
+    }
+
+    public static ServiceOrderResponse from(
+            ServiceOrder order,
+            CustomerSnapshot customer,
+            List<ServiceOrderItem> items,
+            Map<UUID, ParentItemRef> parentRefsByItemId,
+            Map<UUID, String> technicianNamesById,
+            boolean includeCommission
+    ) {
+        return from(order, customer, items, parentRefsByItemId, technicianNamesById, includeCommission, Map.of());
+    }
+
+    public static ServiceOrderResponse from(
+            ServiceOrder order,
+            CustomerSnapshot customer,
+            List<ServiceOrderItem> items,
+            Map<UUID, ParentItemRef> parentRefsByItemId,
+            Map<UUID, String> technicianNamesById,
+            boolean includeCommission,
+            Map<UUID, List<QuoteOptionResponse>> quoteOptionsByItemId
+    ) {
         List<ServiceOrderItemResponse> itemResponses = items.stream()
                 .map(item -> {
                     ParentItemRef parentRef = item.getParentItemId() != null
                             ? parentRefsByItemId.get(item.getParentItemId())
                             : null;
+                    String techName = item.getAssignedTechnicianId() != null
+                            ? technicianNamesById.get(item.getAssignedTechnicianId())
+                            : null;
                     return ServiceOrderItemResponse.from(
                             item,
                             order.getOrderNumber(),
                             parentRef != null ? parentRef.orderId() : null,
-                            parentRef != null ? parentRef.tag() : null
+                            parentRef != null ? parentRef.tag() : null,
+                            techName,
+                            includeCommission,
+                            quoteOptionsByItemId.getOrDefault(item.getId(), List.of())
                     );
                 })
                 .toList();

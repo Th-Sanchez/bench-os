@@ -1,5 +1,6 @@
 package com.benchos.api.iam.internal.web.dto;
 
+import com.benchos.api.iam.CommissionBasis;
 import com.benchos.api.iam.internal.entity.TenantSettings;
 
 import java.math.BigDecimal;
@@ -26,7 +27,9 @@ public record TenantSettingsResponse(
         String shopAddress,
         String businessHours,
         String warrantyTerms,
-        Map<String, List<String>> careTipsTemplates
+        Map<String, List<String>> careTipsTemplates,
+        boolean technicianAssignmentEnabled,
+        CommissionBasis commissionBasis
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -48,7 +51,9 @@ public record TenantSettingsResponse(
                 settings.getShopAddress(),
                 settings.getBusinessHours(),
                 settings.getWarrantyTerms(),
-                settings.getCareTipsTemplateMap()
+                settings.getCareTipsTemplateMap(),
+                settings.isTechnicianAssignmentEnabled(),
+                settings.getCommissionBasis()
         );
     }
 }

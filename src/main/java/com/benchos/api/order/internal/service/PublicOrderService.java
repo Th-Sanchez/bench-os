@@ -7,13 +7,16 @@ import com.benchos.api.iam.TenantSettingsSnapshot;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.PublicQuoteRespondedEvent;
 import com.benchos.api.order.internal.entity.ItemPhoto;
+import com.benchos.api.order.internal.entity.QuoteOption;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
 import com.benchos.api.order.internal.repository.ItemPhotoRepository;
+import com.benchos.api.order.internal.repository.QuoteOptionRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.PublicOrderItemPhotoResponse;
 import com.benchos.api.order.internal.web.dto.PublicOrderResponse;
+import com.benchos.api.order.internal.web.dto.PublicQuoteOptionResponse;
 import com.benchos.api.order.internal.web.dto.SubmitOrderRatingRequest;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
@@ -38,6 +41,7 @@ public class PublicOrderService {
     private final ServiceOrderRepository serviceOrderRepository;
     private final ServiceOrderItemRepository serviceOrderItemRepository;
     private final ItemPhotoRepository itemPhotoRepository;
+    private final QuoteOptionRepository quoteOptionRepository;
     private final TenantSettingsQuery tenantSettingsQuery;
     private final CustomerQuery customerQuery;
     private final ObjectStorageService objectStorageService;
@@ -47,6 +51,7 @@ public class PublicOrderService {
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
             ItemPhotoRepository itemPhotoRepository,
+            QuoteOptionRepository quoteOptionRepository,
             TenantSettingsQuery tenantSettingsQuery,
             CustomerQuery customerQuery,
             ObjectStorageService objectStorageService,
@@ -55,6 +60,7 @@ public class PublicOrderService {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
         this.itemPhotoRepository = itemPhotoRepository;
+        this.quoteOptionRepository = quoteOptionRepository;
         this.tenantSettingsQuery = tenantSettingsQuery;
         this.customerQuery = customerQuery;
         this.objectStorageService = objectStorageService;
@@ -69,6 +75,11 @@ public class PublicOrderService {
 
     @Transactional
     public PublicOrderResponse approveItem(UUID publicToken, int itemIndex) {
+        return approveItem(publicToken, itemIndex, null);
+    }
+
+    @Transactional
+    public PublicOrderResponse approveItem(UUID publicToken, int itemIndex, UUID quoteOptionId) {
         ServiceOrderItem item = findItemForUpdateOrThrow(publicToken, itemIndex);
 
         if (item.getStatus() != ItemStatus.QUOTE_SENT) {
@@ -78,6 +89,24 @@ public class PublicOrderService {
         }
 
         Instant now = Instant.now();
+        List<QuoteOption> options = quoteOptionRepository
+                .findAllByTenantIdAndServiceOrderItemIdOrderByOptionIndexAsc(item.getTenantId(), item.getId());
+        if (!options.isEmpty()) {
+            QuoteOption chosen;
+            if (quoteOptionId != null) {
+                chosen = options.stream()
+                        .filter(opt -> opt.getId().equals(quoteOptionId))
+                        .findFirst()
+                        .orElseThrow(() -> new BusinessRuleException("Selected quote option not found for this item"));
+            } else {
+                chosen = options.stream()
+                        .filter(QuoteOption::isRecommended)
+                        .findFirst()
+                        .orElse(options.getFirst());
+            }
+            item.applySelectedQuoteOption(chosen, now);
+        }
+
         TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(item.getTenantId());
         LocalDate estimatedDate = LocalDate.now(ZoneOffset.UTC).plusDays(settings.defaultEstimatedDays());
         item.transitionTo(ItemStatus.APPROVED, estimatedDate, null, now);
@@ -209,6 +238,19 @@ public class PublicOrderService {
                         item -> resolveCareTipsForAppliance(settings.careTipsTemplates(), item.getApplianceType())
                 ));
 
+        Map<UUID, List<PublicQuoteOptionResponse>> quoteOptionsByItemId = itemIds.isEmpty()
+                ? Map.of()
+                : quoteOptionRepository
+                        .findAllByTenantIdAndServiceOrderItemIdInOrderByServiceOrderItemIdAscOptionIndexAsc(
+                                order.getTenantId(),
+                                itemIds
+                        )
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                QuoteOption::getServiceOrderItemId,
+                                Collectors.mapping(PublicQuoteOptionResponse::from, Collectors.toList())
+                        ));
+
         return PublicOrderResponse.from(
                 order,
                 shopName,
@@ -222,7 +264,8 @@ public class PublicOrderService {
                 pixPayload,
                 pixQrSvg,
                 photosByItemId,
-                careTipsByItemId
+                careTipsByItemId,
+                quoteOptionsByItemId
         );
     }
 

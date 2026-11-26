@@ -3,6 +3,8 @@ package com.benchos.api.iam.internal.web;
 import com.benchos.api.iam.internal.service.UserManagementService;
 import com.benchos.api.iam.internal.web.dto.CreateUserRequest;
 import com.benchos.api.iam.internal.web.dto.ResetUserPasswordRequest;
+import com.benchos.api.iam.internal.web.dto.TechnicianOptionResponse;
+import com.benchos.api.iam.internal.web.dto.UpdateUserCommissionRequest;
 import com.benchos.api.iam.internal.web.dto.UpdateUserStatusRequest;
 import com.benchos.api.iam.internal.web.dto.UserResponse;
 import jakarta.validation.Valid;
@@ -33,6 +35,12 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me() {
         return userManagementService.getCurrentUser();
+    }
+
+    @GetMapping("/technicians")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public List<TechnicianOptionResponse> listTechnicians() {
+        return userManagementService.listTechnicianOptions();
     }
 
     @GetMapping
@@ -70,5 +78,14 @@ public class UserController {
             @Valid @RequestBody ResetUserPasswordRequest request
     ) {
         return userManagementService.resetUserPassword(id, request.newPassword());
+    }
+
+    @PatchMapping("/{id}/commission")
+    @PreAuthorize("hasRole('OWNER')")
+    public UserResponse updateUserCommission(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserCommissionRequest request
+    ) {
+        return userManagementService.updateUserCommission(id, request.commissionPercent());
     }
 }

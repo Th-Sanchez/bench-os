@@ -1,5 +1,6 @@
 package com.benchos.api.order.internal.entity;
 
+import com.benchos.api.iam.CommissionBasis;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.OrderItemDeliveredEvent;
 import com.benchos.api.order.PaymentPart;
@@ -100,8 +101,14 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     private String cancellationReason;
 
+    @Column(name = "quote_sent_at")
+    private Instant quoteSentAt;
+
     @Column(name = "approved_at")
     private Instant approvedAt;
+
+    @Column(name = "rejected_at")
+    private Instant rejectedAt;
 
     @Column(name = "finished_at")
     private Instant finishedAt;
@@ -123,6 +130,21 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     @Column(name = "is_warranty_return", nullable = false, updatable = false)
     private boolean warrantyReturn;
+
+    @Column(name = "assigned_technician_id")
+    private UUID assignedTechnicianId;
+
+    @Column(name = "commission_percent", precision = 5, scale = 2)
+    private BigDecimal commissionPercent;
+
+    @Column(name = "commission_amount", precision = 10, scale = 2)
+    private BigDecimal commissionAmount;
+
+    @Column(name = "selected_quote_option_id")
+    private UUID selectedQuoteOptionId;
+
+    @Column(name = "selected_quote_option_label", length = 120)
+    private String selectedQuoteOptionLabel;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -328,16 +350,101 @@ public class ServiceOrderItem extends TenantAwareEntity {
         if (warrantyDays != null) {
             this.warrantyDays = warrantyDays;
         }
+        this.selectedQuoteOptionId = null;
+        this.selectedQuoteOptionLabel = null;
         touch(now);
+    }
+
+    public void applySelectedQuoteOption(QuoteOption option, Instant now) {
+        if (option == null) {
+            return;
+        }
+        this.laborCost = option.getLaborCost();
+        this.partsCost = option.getPartsCost();
+        this.partsCostActual = option.getPartsCostActual();
+        this.discount = option.getDiscount();
+        this.totalPrice = option.getTotalPrice();
+        this.warrantyDays = option.getWarrantyDays();
+        this.selectedQuoteOptionId = option.getId();
+        this.selectedQuoteOptionLabel = option.getLabel();
+        touch(now != null ? now : Instant.now());
+    }
+
+    public void clearSelectedQuoteOption() {
+        this.selectedQuoteOptionId = null;
+        this.selectedQuoteOptionLabel = null;
     }
 
     public BigDecimal getPartsCostActual() {
         return partsCostActual != null ? partsCostActual : ZERO_AMOUNT;
     }
 
+    public void addActualPartsCost(BigDecimal delta, Instant now) {
+        if (delta == null) {
+            return;
+        }
+        BigDecimal scaled = scaleMoney(delta, "Actual parts cost");
+        if (scaled.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+        this.partsCostActual = getPartsCostActual().add(scaled).setScale(2, RoundingMode.HALF_UP);
+        touch(now != null ? now : Instant.now());
+    }
+
     public BigDecimal getEstimatedNetProfit() {
         BigDecimal revenue = totalPrice != null ? totalPrice : ZERO_AMOUNT;
         return revenue.subtract(getPartsCostActual()).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public void assignTechnician(UUID technicianId, BigDecimal overrideCommissionPercent, Instant now) {
+        if (this.status.isTerminal()) {
+            throw new BusinessRuleException("Cannot change technician for an item in terminal status (" + this.status + ")");
+        }
+        if (overrideCommissionPercent != null) {
+            BigDecimal scaled = overrideCommissionPercent.setScale(2, RoundingMode.HALF_UP);
+            if (scaled.compareTo(BigDecimal.ZERO) < 0 || scaled.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new BusinessRuleException("Commission percent must be between 0 and 100");
+            }
+            this.commissionPercent = scaled;
+        } else if (technicianId == null) {
+            this.commissionPercent = null;
+        }
+        this.assignedTechnicianId = technicianId;
+        this.commissionAmount = null;
+        touch(now != null ? now : Instant.now());
+    }
+
+    public void clearCommissionOverride(Instant now) {
+        if (this.status.isTerminal()) {
+            throw new BusinessRuleException("Cannot change commission for an item in terminal status (" + this.status + ")");
+        }
+        this.commissionPercent = null;
+        touch(now != null ? now : Instant.now());
+    }
+
+    public BigDecimal calculateCommissionAmount(BigDecimal effectivePercent, CommissionBasis basis) {
+        if (effectivePercent == null || effectivePercent.compareTo(BigDecimal.ZERO) <= 0
+                || this.totalPrice == null || this.totalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return ZERO_AMOUNT;
+        }
+        CommissionBasis resolvedBasis = basis != null ? basis : CommissionBasis.LABOR_ONLY;
+        BigDecimal baseAmount = switch (resolvedBasis) {
+            case LABOR_ONLY -> this.laborCost.min(this.totalPrice).max(BigDecimal.ZERO);
+            case TOTAL_PRICE -> this.totalPrice;
+            case NET_PROFIT -> getEstimatedNetProfit().max(BigDecimal.ZERO);
+        };
+        return baseAmount
+                .multiply(effectivePercent)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    public void snapshotCommission(BigDecimal effectivePercent, BigDecimal amount) {
+        this.commissionPercent = effectivePercent != null
+                ? effectivePercent.setScale(2, RoundingMode.HALF_UP)
+                : ZERO_AMOUNT;
+        this.commissionAmount = amount != null
+                ? amount.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP)
+                : ZERO_AMOUNT;
     }
 
     public void transitionTo(
@@ -368,14 +475,21 @@ public class ServiceOrderItem extends TenantAwareEntity {
         switch (targetStatus) {
             case APPROVED -> {
                 this.approvedAt = now;
+                this.rejectedAt = null;
                 this.estimatedCompletionDate = estimatedCompletionDate;
             }
             case QUOTE_SENT -> {
+                if (this.quoteSentAt == null) {
+                    this.quoteSentAt = now;
+                }
                 if (previousStatus.isQuoteLockedAfterApproval()) {
                     this.approvedAt = null;
                     this.estimatedCompletionDate = null;
+                    this.selectedQuoteOptionId = null;
+                    this.selectedQuoteOptionLabel = null;
                 }
             }
+            case REJECTED -> this.rejectedAt = now;
             case READY_FOR_PICKUP -> this.finishedAt = now;
             case CANCELLED -> {
                 String normalizedReason = normalizeOptional(cancellationReason);
@@ -607,8 +721,16 @@ public class ServiceOrderItem extends TenantAwareEntity {
         return cancellationReason;
     }
 
+    public Instant getQuoteSentAt() {
+        return quoteSentAt;
+    }
+
     public Instant getApprovedAt() {
         return approvedAt;
+    }
+
+    public Instant getRejectedAt() {
+        return rejectedAt;
     }
 
     public Instant getFinishedAt() {
@@ -649,6 +771,26 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public boolean isWarrantyReturn() {
         return warrantyReturn;
+    }
+
+    public UUID getAssignedTechnicianId() {
+        return assignedTechnicianId;
+    }
+
+    public BigDecimal getCommissionPercent() {
+        return commissionPercent;
+    }
+
+    public BigDecimal getCommissionAmount() {
+        return commissionAmount;
+    }
+
+    public UUID getSelectedQuoteOptionId() {
+        return selectedQuoteOptionId;
+    }
+
+    public String getSelectedQuoteOptionLabel() {
+        return selectedQuoteOptionLabel;
     }
 
     public Instant getDiscardedAt() {

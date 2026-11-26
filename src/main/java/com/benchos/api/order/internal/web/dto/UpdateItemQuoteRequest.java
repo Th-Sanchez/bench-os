@@ -1,11 +1,13 @@
 package com.benchos.api.order.internal.web.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record UpdateItemQuoteRequest(
         @Size(max = 2000) String technicalDiagnosis,
@@ -13,6 +15,7 @@ public record UpdateItemQuoteRequest(
         @NotNull @DecimalMin("0.00") BigDecimal partsCost,
         @DecimalMin("0.00") BigDecimal partsCostActual,
         @NotNull @DecimalMin("0.00") BigDecimal discount,
-        @Min(0) Integer warrantyDays
+        @Min(0) Integer warrantyDays,
+        @Size(max = 4) List<@Valid QuoteOptionRequest> quoteOptions
 ) {
 }

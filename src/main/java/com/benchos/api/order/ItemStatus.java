@@ -23,7 +23,7 @@ public enum ItemStatus {
             case QUOTE_SENT -> EnumSet.of(APPROVED, REJECTED, CANCELLED);
             case APPROVED -> EnumSet.of(WAITING_PARTS, IN_REPAIR, QUOTE_SENT, CANCELLED);
             case WAITING_PARTS -> EnumSet.of(IN_REPAIR, QUOTE_SENT, CANCELLED);
-            case IN_REPAIR -> EnumSet.of(READY_FOR_PICKUP, QUOTE_SENT, CANCELLED);
+            case IN_REPAIR -> EnumSet.of(WAITING_PARTS, READY_FOR_PICKUP, QUOTE_SENT, CANCELLED);
             case READY_FOR_PICKUP -> EnumSet.of(DELIVERED, DISCARDED, CANCELLED);
             case REJECTED -> EnumSet.of(DELIVERED, DISCARDED, CANCELLED);
             case DELIVERED, DISCARDED, CANCELLED -> EnumSet.noneOf(ItemStatus.class);

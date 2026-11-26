@@ -1,9 +1,12 @@
 package com.benchos.api.iam.internal.entity;
 
+import com.benchos.api.iam.CommissionBasis;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.pix.PixBrCodeGenerator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -88,6 +91,13 @@ public class TenantSettings {
     @Column(name = "care_tips_templates", columnDefinition = "TEXT")
     private String careTipsTemplates;
 
+    @Column(name = "technician_assignment_enabled", nullable = false)
+    private boolean technicianAssignmentEnabled;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "commission_basis", nullable = false, length = 20)
+    private CommissionBasis commissionBasis;
+
     protected TenantSettings() {
     }
 
@@ -112,6 +122,8 @@ public class TenantSettings {
         settings.businessHours = null;
         settings.warrantyTerms = null;
         settings.careTipsTemplates = null;
+        settings.technicianAssignmentEnabled = false;
+        settings.commissionBasis = CommissionBasis.LABOR_ONLY;
         return settings;
     }
 
@@ -218,6 +230,18 @@ public class TenantSettings {
         }
         if (pixReceiverCity != null) {
             this.pixReceiverCity = normalizeOptionalText(pixReceiverCity, 60, "Pix receiver city");
+        }
+    }
+
+    public void updateTechnicianCommissionSettings(
+            Boolean technicianAssignmentEnabled,
+            CommissionBasis commissionBasis
+    ) {
+        if (technicianAssignmentEnabled != null) {
+            this.technicianAssignmentEnabled = technicianAssignmentEnabled;
+        }
+        if (commissionBasis != null) {
+            this.commissionBasis = commissionBasis;
         }
     }
 
@@ -374,6 +398,14 @@ public class TenantSettings {
 
     public void resetCareTipsTemplates() {
         this.careTipsTemplates = null;
+    }
+
+    public boolean isTechnicianAssignmentEnabled() {
+        return technicianAssignmentEnabled;
+    }
+
+    public CommissionBasis getCommissionBasis() {
+        return commissionBasis != null ? commissionBasis : CommissionBasis.LABOR_ONLY;
     }
 
     public void updateBranding(

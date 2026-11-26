@@ -2,6 +2,7 @@ package com.benchos.api.order.internal.web;
 
 import com.benchos.api.order.internal.service.OrderItemLifecycleService;
 import com.benchos.api.order.internal.service.ServiceOrderService;
+import com.benchos.api.order.internal.web.dto.AssignTechnicianRequest;
 import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.DeliverItemRequest;
 import com.benchos.api.order.internal.web.dto.ServiceOrderItemResponse;
@@ -46,6 +47,16 @@ public class OrderItemLifecycleController {
             @Valid @RequestBody UpdateItemQuoteRequest request
     ) {
         return lifecycleService.updateQuote(orderId, itemId, request);
+    }
+
+    @PatchMapping("/technician")
+    @PreAuthorize("hasAnyRole('OWNER', 'ATTENDANT', 'TECHNICIAN')")
+    public ServiceOrderItemResponse assignTechnician(
+            @PathVariable UUID orderId,
+            @PathVariable UUID itemId,
+            @Valid @RequestBody AssignTechnicianRequest request
+    ) {
+        return lifecycleService.assignTechnician(orderId, itemId, request);
     }
 
     @PostMapping("/status")

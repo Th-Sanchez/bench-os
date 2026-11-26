@@ -85,4 +85,29 @@ public interface ServiceOrderItemRepository extends JpaRepository<ServiceOrderIt
             @Param("startInclusive") Instant startInclusive,
             @Param("endExclusive") Instant endExclusive
     );
+
+    @Query("""
+            SELECT i FROM ServiceOrderItem i
+            WHERE i.tenantId = :tenantId
+              AND (
+                    (i.createdAt >= :startInclusive AND i.createdAt < :endExclusive)
+                 OR (i.quoteSentAt >= :startInclusive AND i.quoteSentAt < :endExclusive)
+                 OR (i.approvedAt >= :startInclusive AND i.approvedAt < :endExclusive)
+                 OR (i.rejectedAt >= :startInclusive AND i.rejectedAt < :endExclusive)
+                 OR (i.finishedAt >= :startInclusive AND i.finishedAt < :endExclusive)
+                 OR (i.deliveredAt >= :startInclusive AND i.deliveredAt < :endExclusive)
+                 OR (i.status IN (com.benchos.api.order.ItemStatus.QUOTE_SENT, com.benchos.api.order.ItemStatus.REJECTED)
+                     AND i.updatedAt >= :startInclusive AND i.updatedAt < :endExclusive)
+              )
+            """)
+    List<ServiceOrderItem> findForAnalyticsPeriod(
+            @Param("tenantId") UUID tenantId,
+            @Param("startInclusive") Instant startInclusive,
+            @Param("endExclusive") Instant endExclusive
+    );
+
+    List<ServiceOrderItem> findAllByTenantIdAndStatusIn(
+            UUID tenantId,
+            Collection<ItemStatus> statuses
+    );
 }
