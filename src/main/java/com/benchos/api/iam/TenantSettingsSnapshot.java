@@ -26,6 +26,7 @@ public record TenantSettingsSnapshot(
         String shopLogoDataUrl,
         String shopAddress,
         String businessHours,
-        String warrantyTerms
+        String warrantyTerms,
+        Map<String, List<String>> careTipsTemplates
 ) {
 }

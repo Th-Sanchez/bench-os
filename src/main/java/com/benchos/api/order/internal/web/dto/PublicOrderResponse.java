@@ -42,13 +42,15 @@ public record PublicOrderResponse(
             BigDecimal pixAmount,
             String pixPayload,
             String pixQrSvg,
-            Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId
+            Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId,
+            Map<UUID, List<String>> careTipsByItemId
     ) {
         List<PublicOrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> PublicOrderItemResponse.from(
                         item,
                         order.getOrderNumber(),
-                        photosByItemId.getOrDefault(item.getId(), List.of())
+                        photosByItemId.getOrDefault(item.getId(), List.of()),
+                        careTipsByItemId.getOrDefault(item.getId(), List.of())
                 ))
                 .toList();
         return new PublicOrderResponse(

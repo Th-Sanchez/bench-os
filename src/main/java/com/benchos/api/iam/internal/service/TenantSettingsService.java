@@ -54,7 +54,8 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getShopLogoDataUrl(),
                 settings.getShopAddress(),
                 settings.getBusinessHours(),
-                settings.getWarrantyTerms()
+                settings.getWarrantyTerms(),
+                settings.getCareTipsTemplateMap()
         );
     }
 
@@ -143,6 +144,22 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.businessHours(),
                 request.warrantyTerms()
         );
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateCareTips(Map<String, List<String>> templates) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateCareTipsTemplates(templates);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse resetCareTips() {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.resetCareTipsTemplates();
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
 

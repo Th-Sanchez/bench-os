@@ -202,6 +202,13 @@ public class PublicOrderService {
             pixQrSvg = PixBrCodeGenerator.renderQrSvg(pixPayload);
         }
 
+        Map<UUID, List<String>> careTipsByItemId = order.getItems().stream()
+                .filter(item -> item.getStatus() == ItemStatus.DELIVERED)
+                .collect(Collectors.toMap(
+                        ServiceOrderItem::getId,
+                        item -> resolveCareTipsForAppliance(settings.careTipsTemplates(), item.getApplianceType())
+                ));
+
         return PublicOrderResponse.from(
                 order,
                 shopName,
@@ -214,7 +221,24 @@ public class PublicOrderService {
                 pixAmount,
                 pixPayload,
                 pixQrSvg,
-                photosByItemId
+                photosByItemId,
+                careTipsByItemId
         );
+    }
+
+    private static List<String> resolveCareTipsForAppliance(
+            Map<String, List<String>> templates,
+            String applianceType
+    ) {
+        if (templates == null || templates.isEmpty() || applianceType == null || applianceType.isBlank()) {
+            return List.of();
+        }
+        String normalized = applianceType.trim().toLowerCase();
+        for (Map.Entry<String, List<String>> entry : templates.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().trim().toLowerCase().equals(normalized)) {
+                return entry.getValue() == null ? List.of() : entry.getValue();
+            }
+        }
+        return List.of();
     }
 }

@@ -640,6 +640,34 @@
       font-size: 12.5px;
       color: var(--text-secondary);
     }
+    .care-tips-box {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: 10px;
+      padding: 12px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .care-tips-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: #166534;
+    }
+    .care-tips-list {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12.5px;
+      color: #1E293B;
+      line-height: 1.45;
+    }
 
     .footer {
       text-align: center;
@@ -1015,6 +1043,19 @@
               '</div>';
           }
 
+          const careTips = item.status === 'DELIVERED' && Array.isArray(item.careTips) ? item.careTips : [];
+          const careTipsHtml = careTips.length > 0
+            ? '<div class="care-tips-box">' +
+                '<div class="care-tips-title">' +
+                  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>' +
+                  'Como fazer seu ' + escapeHtml(item.applianceType || 'aparelho') + ' durar mais' +
+                '</div>' +
+                '<ul class="care-tips-list">' +
+                  careTips.map(function (tip) { return '<li>' + escapeHtml(tip) + '</li>'; }).join('') +
+                '</ul>' +
+              '</div>'
+            : '';
+
           return (
             '<section class="card">' +
               '<div class="row-between">' +
@@ -1036,6 +1077,7 @@
               diagHtml +
               decisionHtml +
               photosHtml +
+              careTipsHtml +
               footerHtml +
             '</section>'
           );

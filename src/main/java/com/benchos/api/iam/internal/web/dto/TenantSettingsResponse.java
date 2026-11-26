@@ -25,7 +25,8 @@ public record TenantSettingsResponse(
         String shopLogoDataUrl,
         String shopAddress,
         String businessHours,
-        String warrantyTerms
+        String warrantyTerms,
+        Map<String, List<String>> careTipsTemplates
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -46,7 +47,8 @@ public record TenantSettingsResponse(
                 settings.getShopLogoDataUrl(),
                 settings.getShopAddress(),
                 settings.getBusinessHours(),
-                settings.getWarrantyTerms()
+                settings.getWarrantyTerms(),
+                settings.getCareTipsTemplateMap()
         );
     }
 }

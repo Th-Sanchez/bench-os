@@ -85,6 +85,9 @@ public class TenantSettings {
     @Column(name = "warranty_terms", columnDefinition = "TEXT")
     private String warrantyTerms;
 
+    @Column(name = "care_tips_templates", columnDefinition = "TEXT")
+    private String careTipsTemplates;
+
     protected TenantSettings() {
     }
 
@@ -108,6 +111,7 @@ public class TenantSettings {
         settings.shopAddress = null;
         settings.businessHours = null;
         settings.warrantyTerms = null;
+        settings.careTipsTemplates = null;
         return settings;
     }
 
@@ -358,6 +362,18 @@ public class TenantSettings {
 
     public String getWarrantyTerms() {
         return warrantyTerms;
+    }
+
+    public Map<String, List<String>> getCareTipsTemplateMap() {
+        return CareTipsTemplateCodec.decodeOrDefault(this.careTipsTemplates);
+    }
+
+    public void updateCareTipsTemplates(Map<String, List<String>> templates) {
+        this.careTipsTemplates = CareTipsTemplateCodec.encodeAndValidate(templates);
+    }
+
+    public void resetCareTipsTemplates() {
+        this.careTipsTemplates = null;
     }
 
     public void updateBranding(

@@ -174,11 +174,13 @@ class DeliverySignatureAndReviewIntegrationTest {
         transition(token, orderId, itemId, "READY_FOR_PICKUP");
 
         // While item is READY_FOR_PICKUP with Pix key configured, public tracking exposes Pix BR Code & QR SVG
+        // Care tips are not shown until the item is delivered
         mockMvc.perform(get("/api/v1/public/orders/{publicToken}", publicToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pixAmount").value(100.0))
                 .andExpect(jsonPath("$.pixPayload").value(containsString("br.gov.bcb.pix")))
-                .andExpect(jsonPath("$.pixQrSvg").value(containsString("<svg ")));
+                .andExpect(jsonPath("$.pixQrSvg").value(containsString("<svg ")))
+                .andExpect(jsonPath("$.items[0].careTips").isEmpty());
 
         // Unsafe XSS SVG signature is rejected (422)
         mockMvc.perform(post("/api/v1/orders/{orderId}/items/{itemId}/deliver", orderId, itemId)
@@ -204,13 +206,14 @@ class DeliverySignatureAndReviewIntegrationTest {
                 .andExpect(jsonPath("$.deliverySignatureSvg").value(containsString("M12 80L64 42L120 90")))
                 .andExpect(jsonPath("$.deliverySignerName").value("Joao Filho"));
 
-        // Public tracking response exposes signature SVG and Google review URL without leaking signer PII
+        // Public tracking response exposes signature SVG, Google review URL, and post-delivery care tips without leaking signer PII
         mockMvc.perform(get("/api/v1/public/orders/{publicToken}", publicToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.googleReviewUrl").value(googleUrl))
                 .andExpect(jsonPath("$.customerRating").value(nullValue()))
                 .andExpect(jsonPath("$.items[0].deliverySignatureSvg").value(containsString("M12 80L64 42L120 90")))
-                .andExpect(jsonPath("$.items[0].deliverySignerName").doesNotExist());
+                .andExpect(jsonPath("$.items[0].deliverySignerName").doesNotExist())
+                .andExpect(jsonPath("$.items[0].careTips[0]").value(containsString("tomada")));
 
         // Out-of-range rating fails validation (400)
         mockMvc.perform(post("/api/v1/public/orders/{publicToken}/rating", publicToken)

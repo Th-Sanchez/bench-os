@@ -34,12 +34,14 @@ public record PublicOrderItemResponse(
         Instant deliveredAt,
         String deliverySignatureSvg,
         Instant discardedAt,
-        List<PublicOrderItemPhotoResponse> photos
+        List<PublicOrderItemPhotoResponse> photos,
+        List<String> careTips
 ) {
     public static PublicOrderItemResponse from(
             ServiceOrderItem item,
             long orderNumber,
-            List<PublicOrderItemPhotoResponse> photos
+            List<PublicOrderItemPhotoResponse> photos,
+            List<String> careTips
     ) {
         return new PublicOrderItemResponse(
                 item.getItemIndex(),
@@ -62,7 +64,8 @@ public record PublicOrderItemResponse(
                 item.getDeliveredAt(),
                 item.getDeliverySignatureSvg(),
                 item.getDiscardedAt(),
-                photos
+                photos,
+                careTips == null ? List.of() : List.copyOf(careTips)
         );
     }
 }
