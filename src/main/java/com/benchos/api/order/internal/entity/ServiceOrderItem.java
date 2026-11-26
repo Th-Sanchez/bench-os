@@ -100,8 +100,14 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     private String cancellationReason;
 
+    @Column(name = "quote_sent_at")
+    private Instant quoteSentAt;
+
     @Column(name = "approved_at")
     private Instant approvedAt;
+
+    @Column(name = "rejected_at")
+    private Instant rejectedAt;
 
     @Column(name = "finished_at")
     private Instant finishedAt;
@@ -380,14 +386,19 @@ public class ServiceOrderItem extends TenantAwareEntity {
         switch (targetStatus) {
             case APPROVED -> {
                 this.approvedAt = now;
+                this.rejectedAt = null;
                 this.estimatedCompletionDate = estimatedCompletionDate;
             }
             case QUOTE_SENT -> {
+                if (this.quoteSentAt == null) {
+                    this.quoteSentAt = now;
+                }
                 if (previousStatus.isQuoteLockedAfterApproval()) {
                     this.approvedAt = null;
                     this.estimatedCompletionDate = null;
                 }
             }
+            case REJECTED -> this.rejectedAt = now;
             case READY_FOR_PICKUP -> this.finishedAt = now;
             case CANCELLED -> {
                 String normalizedReason = normalizeOptional(cancellationReason);
@@ -619,8 +630,16 @@ public class ServiceOrderItem extends TenantAwareEntity {
         return cancellationReason;
     }
 
+    public Instant getQuoteSentAt() {
+        return quoteSentAt;
+    }
+
     public Instant getApprovedAt() {
         return approvedAt;
+    }
+
+    public Instant getRejectedAt() {
+        return rejectedAt;
     }
 
     public Instant getFinishedAt() {

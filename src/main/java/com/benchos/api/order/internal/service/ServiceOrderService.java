@@ -15,6 +15,7 @@ import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
 import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
+import com.benchos.api.order.internal.web.dto.WorkshopAnalyticsResponse;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.security.SecurityUtils;
@@ -292,6 +293,253 @@ public class ServiceOrderService {
                 estimatedNetProfit,
                 profitMarginPercent
         );
+    }
+
+    @Transactional(readOnly = true)
+    public WorkshopAnalyticsResponse getWorkshopAnalytics(LocalDate from, LocalDate to, String zone) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ZoneId zoneId;
+        if (zone == null || zone.isBlank()) {
+            zoneId = ZoneId.of("America/Sao_Paulo");
+        } else {
+            try {
+                zoneId = ZoneId.of(zone.trim());
+            } catch (DateTimeException ex) {
+                throw new BusinessRuleException("Invalid timezone: " + zone);
+            }
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        LocalDate start = from != null ? from : today.withDayOfMonth(1);
+        LocalDate end = to != null ? to : today.withDayOfMonth(today.lengthOfMonth());
+        if (end.isBefore(start)) {
+            throw new BusinessRuleException("'to' date must be on or after 'from' date");
+        }
+
+        Instant startInclusive = start.atStartOfDay(zoneId).toInstant();
+        Instant endExclusive = end.plusDays(1).atStartOfDay(zoneId).toInstant();
+
+        List<ServiceOrderItem> periodItems = serviceOrderItemRepository
+                .findForAnalyticsPeriod(tenantId, startInclusive, endExclusive);
+
+        long quotesSentCount = 0;
+        long quotesApprovedCount = 0;
+        long quotesRejectedCount = 0;
+        long quotesPendingCount = 0;
+
+        long intakeToQuoteTotalMinutes = 0;
+        long intakeToQuoteSamples = 0;
+        long approvalToReadyTotalMinutes = 0;
+        long approvalToReadySamples = 0;
+        long totalTurnaroundMinutes = 0;
+        long totalTurnaroundSamples = 0;
+
+        long deliveredItemsCount = 0;
+        long paidRepairsCount = 0;
+        BigDecimal totalRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalPartsCostActual = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        long itemsReceivedCount = 0;
+        long warrantyReturnsCount = 0;
+
+        for (ServiceOrderItem item : periodItems) {
+            boolean cancelled = item.getStatus() == ItemStatus.CANCELLED;
+            boolean freeWarrantyFastTrack = item.isWarrantyReturn()
+                    && item.getQuoteSentAt() == null
+                    && item.getTotalPrice().compareTo(BigDecimal.ZERO) == 0;
+
+            // 1. Intake & Warranty Return Rate
+            if (!cancelled && isInRange(item.getCreatedAt(), startInclusive, endExclusive)) {
+                itemsReceivedCount++;
+                if (item.isWarrantyReturn()) {
+                    warrantyReturnsCount++;
+                }
+            }
+
+            // 2. Quote Conversion Funnel
+            if (!cancelled && !freeWarrantyFastTrack) {
+                Instant effectiveQuoteSent = item.getQuoteSentAt();
+                boolean sentInPeriod = isInRange(effectiveQuoteSent, startInclusive, endExclusive)
+                        || (effectiveQuoteSent == null
+                            && (isInRange(item.getApprovedAt(), startInclusive, endExclusive)
+                                || isInRange(item.getRejectedAt(), startInclusive, endExclusive)
+                                || (item.getStatus() == ItemStatus.QUOTE_SENT
+                                    && isInRange(item.getUpdatedAt(), startInclusive, endExclusive))));
+                if (sentInPeriod) {
+                    quotesSentCount++;
+                }
+
+                if (isInRange(item.getApprovedAt(), startInclusive, endExclusive)) {
+                    quotesApprovedCount++;
+                }
+
+                boolean rejectedInPeriod = isInRange(item.getRejectedAt(), startInclusive, endExclusive)
+                        || (item.getRejectedAt() == null
+                            && item.getStatus() == ItemStatus.REJECTED
+                            && isInRange(item.getUpdatedAt(), startInclusive, endExclusive));
+                if (rejectedInPeriod) {
+                    quotesRejectedCount++;
+                }
+
+                if (item.getStatus() == ItemStatus.QUOTE_SENT) {
+                    Instant ref = effectiveQuoteSent != null ? effectiveQuoteSent : item.getUpdatedAt();
+                    if (isInRange(ref, startInclusive, endExclusive)) {
+                        quotesPendingCount++;
+                    }
+                }
+            }
+
+            // 3. SLA / Turnaround Times
+            if (!cancelled
+                    && item.getQuoteSentAt() != null
+                    && isInRange(item.getQuoteSentAt(), startInclusive, endExclusive)
+                    && !item.getQuoteSentAt().isBefore(item.getCreatedAt())) {
+                intakeToQuoteTotalMinutes += Duration.between(item.getCreatedAt(), item.getQuoteSentAt()).toMinutes();
+                intakeToQuoteSamples++;
+            }
+
+            if (!cancelled
+                    && item.getFinishedAt() != null
+                    && isInRange(item.getFinishedAt(), startInclusive, endExclusive)) {
+                if (item.getApprovedAt() != null && !item.getFinishedAt().isBefore(item.getApprovedAt())) {
+                    approvalToReadyTotalMinutes += Duration.between(item.getApprovedAt(), item.getFinishedAt()).toMinutes();
+                    approvalToReadySamples++;
+                }
+                if (!item.getFinishedAt().isBefore(item.getCreatedAt())) {
+                    totalTurnaroundMinutes += Duration.between(item.getCreatedAt(), item.getFinishedAt()).toMinutes();
+                    totalTurnaroundSamples++;
+                }
+            }
+
+            // 4. Delivered Financial Metrics & Average Ticket
+            if (item.getStatus() == ItemStatus.DELIVERED
+                    && isInRange(item.getDeliveredAt(), startInclusive, endExclusive)) {
+                deliveredItemsCount++;
+                BigDecimal price = item.getTotalPrice();
+                totalRevenue = totalRevenue.add(price);
+                totalPartsCostActual = totalPartsCostActual.add(item.getPartsCostActual());
+                if (price.compareTo(BigDecimal.ZERO) > 0) {
+                    paidRepairsCount++;
+                }
+            }
+        }
+
+        long decidedQuotes = quotesApprovedCount + quotesRejectedCount;
+        BigDecimal quoteApprovalRatePercent = decidedQuotes > 0
+                ? BigDecimal.valueOf(quotesApprovedCount)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(decidedQuotes), 2, RoundingMode.HALF_UP)
+                : null;
+
+        BigDecimal avgIntakeToQuoteHours = intakeToQuoteSamples > 0
+                ? BigDecimal.valueOf(intakeToQuoteTotalMinutes)
+                        .divide(BigDecimal.valueOf(intakeToQuoteSamples * 60L), 1, RoundingMode.HALF_UP)
+                : null;
+
+        BigDecimal avgApprovalToReadyHours = approvalToReadySamples > 0
+                ? BigDecimal.valueOf(approvalToReadyTotalMinutes)
+                        .divide(BigDecimal.valueOf(approvalToReadySamples * 60L), 1, RoundingMode.HALF_UP)
+                : null;
+
+        BigDecimal avgTotalTurnaroundHours = totalTurnaroundSamples > 0
+                ? BigDecimal.valueOf(totalTurnaroundMinutes)
+                        .divide(BigDecimal.valueOf(totalTurnaroundSamples * 60L), 1, RoundingMode.HALF_UP)
+                : null;
+
+        BigDecimal netRepairProfit = totalRevenue.subtract(totalPartsCostActual).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netProfitMarginPercent = totalRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? netRepairProfit.multiply(BigDecimal.valueOf(100))
+                        .divide(totalRevenue, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal averageTicket = paidRepairsCount > 0
+                ? totalRevenue.divide(BigDecimal.valueOf(paidRepairsCount), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal warrantyReturnRatePercent = itemsReceivedCount > 0
+                ? BigDecimal.valueOf(warrantyReturnsCount)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(itemsReceivedCount), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        // 5. Current Live Operational Bottlenecks Snapshot
+        List<ServiceOrderItem> activeItems = serviceOrderItemRepository.findAllByTenantIdAndStatusIn(
+                tenantId,
+                List.of(
+                        ItemStatus.RECEIVED,
+                        ItemStatus.DIAGNOSING,
+                        ItemStatus.QUOTE_SENT,
+                        ItemStatus.APPROVED,
+                        ItemStatus.WAITING_PARTS,
+                        ItemStatus.IN_REPAIR,
+                        ItemStatus.READY_FOR_PICKUP
+                )
+        );
+
+        long overdueActiveCount = 0;
+        long awaitingQuoteCount = 0;
+        long awaitingApprovalCount = 0;
+        long waitingPartsCount = 0;
+        long readyForPickupCount = 0;
+
+        for (ServiceOrderItem active : activeItems) {
+            switch (active.getStatus()) {
+                case RECEIVED, DIAGNOSING -> awaitingQuoteCount++;
+                case QUOTE_SENT -> awaitingApprovalCount++;
+                case WAITING_PARTS -> {
+                    waitingPartsCount++;
+                    if (active.getEstimatedCompletionDate() != null
+                            && active.getEstimatedCompletionDate().isBefore(today)) {
+                        overdueActiveCount++;
+                    }
+                }
+                case APPROVED, IN_REPAIR -> {
+                    if (active.getEstimatedCompletionDate() != null
+                            && active.getEstimatedCompletionDate().isBefore(today)) {
+                        overdueActiveCount++;
+                    }
+                }
+                case READY_FOR_PICKUP -> readyForPickupCount++;
+                default -> {
+                    // Ignored
+                }
+            }
+        }
+
+        return new WorkshopAnalyticsResponse(
+                start,
+                end,
+                zoneId.getId(),
+                quotesSentCount,
+                quotesApprovedCount,
+                quotesRejectedCount,
+                quotesPendingCount,
+                quoteApprovalRatePercent,
+                avgIntakeToQuoteHours,
+                intakeToQuoteSamples,
+                avgApprovalToReadyHours,
+                approvalToReadySamples,
+                avgTotalTurnaroundHours,
+                deliveredItemsCount,
+                paidRepairsCount,
+                totalRevenue.setScale(2, RoundingMode.HALF_UP),
+                totalPartsCostActual.setScale(2, RoundingMode.HALF_UP),
+                netRepairProfit,
+                netProfitMarginPercent,
+                averageTicket,
+                itemsReceivedCount,
+                warrantyReturnsCount,
+                warrantyReturnRatePercent,
+                overdueActiveCount,
+                awaitingQuoteCount,
+                awaitingApprovalCount,
+                waitingPartsCount,
+                readyForPickupCount
+        );
+    }
+
+    private static boolean isInRange(Instant value, Instant startInclusive, Instant endExclusive) {
+        return value != null && !value.isBefore(startInclusive) && value.isBefore(endExclusive);
     }
 
     @Transactional(readOnly = true)

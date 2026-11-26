@@ -8,6 +8,7 @@ import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
 import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
 import com.benchos.api.order.internal.web.dto.WhatsappLinkResponse;
+import com.benchos.api.order.internal.web.dto.WorkshopAnalyticsResponse;
 import com.benchos.api.shared.web.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -79,6 +80,16 @@ public class ServiceOrderController {
             @RequestParam(required = false) String zone
     ) {
         return serviceOrderService.getRepairProfitability(from, to, zone);
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('OWNER')")
+    public WorkshopAnalyticsResponse getWorkshopAnalytics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String zone
+    ) {
+        return serviceOrderService.getWorkshopAnalytics(from, to, zone);
     }
 
     @GetMapping("/{id}/whatsapp-link")
