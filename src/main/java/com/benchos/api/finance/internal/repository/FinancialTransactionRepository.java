@@ -27,6 +27,8 @@ public interface FinancialTransactionRepository
             TransactionCategory category
     );
 
+    boolean existsByTenantIdAndPartRequestId(UUID tenantId, UUID partRequestId);
+
     List<FinancialTransaction> findAllByTenantIdAndServiceOrderItemIdOrderByCreatedAtAsc(
             UUID tenantId,
             UUID serviceOrderItemId

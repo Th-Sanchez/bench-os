@@ -335,6 +335,18 @@ public class ServiceOrderItem extends TenantAwareEntity {
         return partsCostActual != null ? partsCostActual : ZERO_AMOUNT;
     }
 
+    public void addActualPartsCost(BigDecimal delta, Instant now) {
+        if (delta == null) {
+            return;
+        }
+        BigDecimal scaled = scaleMoney(delta, "Actual parts cost");
+        if (scaled.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+        this.partsCostActual = getPartsCostActual().add(scaled).setScale(2, RoundingMode.HALF_UP);
+        touch(now != null ? now : Instant.now());
+    }
+
     public BigDecimal getEstimatedNetProfit() {
         BigDecimal revenue = totalPrice != null ? totalPrice : ZERO_AMOUNT;
         return revenue.subtract(getPartsCostActual()).setScale(2, RoundingMode.HALF_UP);
