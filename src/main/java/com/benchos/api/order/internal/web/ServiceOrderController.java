@@ -5,6 +5,7 @@ import com.benchos.api.order.WhatsappMessageStage;
 import com.benchos.api.order.internal.service.OrderItemLifecycleService;
 import com.benchos.api.order.internal.service.ServiceOrderService;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
+import com.benchos.api.order.internal.web.dto.MonthlyCommissionReportResponse;
 import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
 import com.benchos.api.order.internal.web.dto.WhatsappLinkResponse;
@@ -90,6 +91,16 @@ public class ServiceOrderController {
             @RequestParam(required = false) String zone
     ) {
         return serviceOrderService.getWorkshopAnalytics(from, to, zone);
+    }
+
+    @GetMapping("/commissions")
+    @PreAuthorize("hasRole('OWNER')")
+    public MonthlyCommissionReportResponse getMonthlyCommissions(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String zone
+    ) {
+        return serviceOrderService.getMonthlyCommissionReport(from, to, zone);
     }
 
     @GetMapping("/{id}/whatsapp-link")

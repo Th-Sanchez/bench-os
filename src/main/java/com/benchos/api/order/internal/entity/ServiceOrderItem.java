@@ -1,5 +1,6 @@
 package com.benchos.api.order.internal.entity;
 
+import com.benchos.api.iam.CommissionBasis;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.OrderItemDeliveredEvent;
 import com.benchos.api.order.PaymentPart;
@@ -129,6 +130,15 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     @Column(name = "is_warranty_return", nullable = false, updatable = false)
     private boolean warrantyReturn;
+
+    @Column(name = "assigned_technician_id")
+    private UUID assignedTechnicianId;
+
+    @Column(name = "commission_percent", precision = 5, scale = 2)
+    private BigDecimal commissionPercent;
+
+    @Column(name = "commission_amount", precision = 10, scale = 2)
+    private BigDecimal commissionAmount;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -356,6 +366,57 @@ public class ServiceOrderItem extends TenantAwareEntity {
     public BigDecimal getEstimatedNetProfit() {
         BigDecimal revenue = totalPrice != null ? totalPrice : ZERO_AMOUNT;
         return revenue.subtract(getPartsCostActual()).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public void assignTechnician(UUID technicianId, BigDecimal overrideCommissionPercent, Instant now) {
+        if (this.status.isTerminal()) {
+            throw new BusinessRuleException("Cannot change technician for an item in terminal status (" + this.status + ")");
+        }
+        if (overrideCommissionPercent != null) {
+            BigDecimal scaled = overrideCommissionPercent.setScale(2, RoundingMode.HALF_UP);
+            if (scaled.compareTo(BigDecimal.ZERO) < 0 || scaled.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new BusinessRuleException("Commission percent must be between 0 and 100");
+            }
+            this.commissionPercent = scaled;
+        } else if (technicianId == null) {
+            this.commissionPercent = null;
+        }
+        this.assignedTechnicianId = technicianId;
+        this.commissionAmount = null;
+        touch(now != null ? now : Instant.now());
+    }
+
+    public void clearCommissionOverride(Instant now) {
+        if (this.status.isTerminal()) {
+            throw new BusinessRuleException("Cannot change commission for an item in terminal status (" + this.status + ")");
+        }
+        this.commissionPercent = null;
+        touch(now != null ? now : Instant.now());
+    }
+
+    public BigDecimal calculateCommissionAmount(BigDecimal effectivePercent, CommissionBasis basis) {
+        if (effectivePercent == null || effectivePercent.compareTo(BigDecimal.ZERO) <= 0
+                || this.totalPrice == null || this.totalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return ZERO_AMOUNT;
+        }
+        CommissionBasis resolvedBasis = basis != null ? basis : CommissionBasis.LABOR_ONLY;
+        BigDecimal baseAmount = switch (resolvedBasis) {
+            case LABOR_ONLY -> this.laborCost.min(this.totalPrice).max(BigDecimal.ZERO);
+            case TOTAL_PRICE -> this.totalPrice;
+            case NET_PROFIT -> getEstimatedNetProfit().max(BigDecimal.ZERO);
+        };
+        return baseAmount
+                .multiply(effectivePercent)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    public void snapshotCommission(BigDecimal effectivePercent, BigDecimal amount) {
+        this.commissionPercent = effectivePercent != null
+                ? effectivePercent.setScale(2, RoundingMode.HALF_UP)
+                : ZERO_AMOUNT;
+        this.commissionAmount = amount != null
+                ? amount.max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP)
+                : ZERO_AMOUNT;
     }
 
     public void transitionTo(
@@ -680,6 +741,18 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public boolean isWarrantyReturn() {
         return warrantyReturn;
+    }
+
+    public UUID getAssignedTechnicianId() {
+        return assignedTechnicianId;
+    }
+
+    public BigDecimal getCommissionPercent() {
+        return commissionPercent;
+    }
+
+    public BigDecimal getCommissionAmount() {
+        return commissionAmount;
     }
 
     public Instant getDiscardedAt() {

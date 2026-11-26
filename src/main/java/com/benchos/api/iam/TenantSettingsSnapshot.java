@@ -27,6 +27,8 @@ public record TenantSettingsSnapshot(
         String shopAddress,
         String businessHours,
         String warrantyTerms,
-        Map<String, List<String>> careTipsTemplates
+        Map<String, List<String>> careTipsTemplates,
+        boolean technicianAssignmentEnabled,
+        CommissionBasis commissionBasis
 ) {
 }

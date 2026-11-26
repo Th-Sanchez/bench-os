@@ -55,7 +55,9 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getShopAddress(),
                 settings.getBusinessHours(),
                 settings.getWarrantyTerms(),
-                settings.getCareTipsTemplateMap()
+                settings.getCareTipsTemplateMap(),
+                settings.isTechnicianAssignmentEnabled(),
+                settings.getCommissionBasis()
         );
     }
 
@@ -97,6 +99,10 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.pixKey(),
                 request.pixReceiverName(),
                 request.pixReceiverCity()
+        );
+        settings.updateTechnicianCommissionSettings(
+                request.technicianAssignmentEnabled(),
+                request.commissionBasis()
         );
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }

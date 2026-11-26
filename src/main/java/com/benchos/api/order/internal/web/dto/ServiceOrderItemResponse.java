@@ -44,11 +44,15 @@ public record ServiceOrderItemResponse(
         UUID parentOrderId,
         String parentItemTag,
         boolean warrantyReturn,
+        UUID assignedTechnicianId,
+        String assignedTechnicianName,
+        BigDecimal commissionPercent,
+        BigDecimal commissionAmount,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static ServiceOrderItemResponse from(ServiceOrderItem item, long orderNumber) {
-        return from(item, orderNumber, null, null);
+        return from(item, orderNumber, null, null, null, false);
     }
 
     public static ServiceOrderItemResponse from(
@@ -56,6 +60,17 @@ public record ServiceOrderItemResponse(
             long orderNumber,
             UUID parentOrderId,
             String parentItemTag
+    ) {
+        return from(item, orderNumber, parentOrderId, parentItemTag, null, false);
+    }
+
+    public static ServiceOrderItemResponse from(
+            ServiceOrderItem item,
+            long orderNumber,
+            UUID parentOrderId,
+            String parentItemTag,
+            String assignedTechnicianName,
+            boolean includeCommission
     ) {
         return new ServiceOrderItemResponse(
                 item.getId(),
@@ -90,6 +105,10 @@ public record ServiceOrderItemResponse(
                 parentOrderId,
                 parentItemTag,
                 item.isWarrantyReturn(),
+                item.getAssignedTechnicianId(),
+                assignedTechnicianName,
+                includeCommission ? item.getCommissionPercent() : null,
+                includeCommission ? item.getCommissionAmount() : null,
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

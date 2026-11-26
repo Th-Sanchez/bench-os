@@ -2,8 +2,11 @@ package com.benchos.api.order.internal.service;
 
 import com.benchos.api.customer.CustomerQuery;
 import com.benchos.api.customer.CustomerSnapshot;
+import com.benchos.api.iam.CommissionBasis;
 import com.benchos.api.iam.TenantSettingsQuery;
 import com.benchos.api.iam.TenantSettingsSnapshot;
+import com.benchos.api.iam.UserDirectoryQuery;
+import com.benchos.api.iam.UserSnapshot;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
@@ -12,6 +15,7 @@ import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderItemRequest;
 import com.benchos.api.order.internal.web.dto.CreateServiceOrderRequest;
 import com.benchos.api.order.internal.web.dto.CreateWarrantyReturnRequest;
+import com.benchos.api.order.internal.web.dto.MonthlyCommissionReportResponse;
 import com.benchos.api.order.internal.web.dto.OrderItemQueueResponse;
 import com.benchos.api.order.internal.web.dto.RepairProfitabilityResponse;
 import com.benchos.api.order.internal.web.dto.ServiceOrderResponse;
@@ -61,19 +65,22 @@ public class ServiceOrderService {
     private final TenantSequenceService tenantSequenceService;
     private final CustomerQuery customerQuery;
     private final TenantSettingsQuery tenantSettingsQuery;
+    private final UserDirectoryQuery userDirectoryQuery;
 
     public ServiceOrderService(
             ServiceOrderRepository serviceOrderRepository,
             ServiceOrderItemRepository serviceOrderItemRepository,
             TenantSequenceService tenantSequenceService,
             CustomerQuery customerQuery,
-            TenantSettingsQuery tenantSettingsQuery
+            TenantSettingsQuery tenantSettingsQuery,
+            UserDirectoryQuery userDirectoryQuery
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
         this.tenantSequenceService = tenantSequenceService;
         this.customerQuery = customerQuery;
         this.tenantSettingsQuery = tenantSettingsQuery;
+        this.userDirectoryQuery = userDirectoryQuery;
     }
 
     @Transactional
@@ -192,6 +199,8 @@ public class ServiceOrderService {
         Map<UUID, List<ServiceOrderItem>> itemsByOrderId = allItems.stream()
                 .collect(Collectors.groupingBy(item -> item.getServiceOrder().getId()));
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, allItems);
+        Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, allItems);
+        boolean includeCommission = isCurrentUserOwner();
 
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
 
@@ -200,7 +209,9 @@ public class ServiceOrderService {
                         order,
                         customersById.get(order.getCustomerId()),
                         itemsByOrderId.getOrDefault(order.getId(), List.of()),
-                        parentRefs
+                        parentRefs,
+                        technicianNames,
+                        includeCommission
                 ))
                 .toList();
 
@@ -216,8 +227,16 @@ public class ServiceOrderService {
         CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
                 .get(order.getCustomerId());
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
+        Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, order.getItems());
 
-        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+        return ServiceOrderResponse.from(
+                order,
+                customer,
+                order.getItems(),
+                parentRefs,
+                technicianNames,
+                isCurrentUserOwner()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -229,8 +248,16 @@ public class ServiceOrderService {
         CustomerSnapshot customer = customerQuery.findAllByIds(List.of(order.getCustomerId()), tenantId)
                 .get(order.getCustomerId());
         Map<UUID, ServiceOrderResponse.ParentItemRef> parentRefs = resolveParentItemRefs(tenantId, order.getItems());
+        Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, order.getItems());
 
-        return ServiceOrderResponse.from(order, customer, order.getItems(), parentRefs);
+        return ServiceOrderResponse.from(
+                order,
+                customer,
+                order.getItems(),
+                parentRefs,
+                technicianNames,
+                isCurrentUserOwner()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -543,6 +570,138 @@ public class ServiceOrderService {
     }
 
     @Transactional(readOnly = true)
+    public MonthlyCommissionReportResponse getMonthlyCommissionReport(LocalDate from, LocalDate to, String zone) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ZoneId zoneId;
+        if (zone == null || zone.isBlank()) {
+            zoneId = ZoneId.of("America/Sao_Paulo");
+        } else {
+            try {
+                zoneId = ZoneId.of(zone.trim());
+            } catch (DateTimeException ex) {
+                throw new BusinessRuleException("Invalid timezone: " + zone);
+            }
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        LocalDate start = from != null ? from : today.withDayOfMonth(1);
+        LocalDate end = to != null ? to : today.withDayOfMonth(today.lengthOfMonth());
+        if (end.isBefore(start)) {
+            throw new BusinessRuleException("'to' date must be on or after 'from' date");
+        }
+
+        Instant startInclusive = start.atStartOfDay(zoneId).toInstant();
+        Instant endExclusive = end.plusDays(1).atStartOfDay(zoneId).toInstant();
+
+        TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(tenantId);
+        CommissionBasis basis = settings.commissionBasis() != null
+                ? settings.commissionBasis()
+                : CommissionBasis.LABOR_ONLY;
+
+        List<ServiceOrderItem> deliveredItems = serviceOrderItemRepository
+                .findDeliveredInPeriod(tenantId, startInclusive, endExclusive);
+
+        List<ServiceOrderItem> paidDelivered = deliveredItems.stream()
+                .filter(item -> item.getTotalPrice().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+
+        Set<UUID> techIds = paidDelivered.stream()
+                .map(ServiceOrderItem::getAssignedTechnicianId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, UserSnapshot> techSnapshots = userDirectoryQuery.findAllByIds(techIds, tenantId);
+
+        long deliveredWithTechnicianCount = 0;
+        long deliveredUnassignedCount = 0;
+        BigDecimal totalCommissionableRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalCommissionAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        Map<UUID, List<ServiceOrderItem>> itemsByTechId = new java.util.LinkedHashMap<>();
+        for (ServiceOrderItem item : paidDelivered) {
+            if (item.getAssignedTechnicianId() == null) {
+                deliveredUnassignedCount++;
+            } else {
+                deliveredWithTechnicianCount++;
+                itemsByTechId.computeIfAbsent(item.getAssignedTechnicianId(), k -> new ArrayList<>()).add(item);
+            }
+        }
+
+        List<MonthlyCommissionReportResponse.TechnicianCommissionRow> rows = new ArrayList<>();
+        for (Map.Entry<UUID, List<ServiceOrderItem>> entry : itemsByTechId.entrySet()) {
+            UUID techId = entry.getKey();
+            UserSnapshot tech = techSnapshots.get(techId);
+            BigDecimal defaultPct = tech != null ? tech.commissionPercent() : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+            BigDecimal techLabor = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            BigDecimal techRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            BigDecimal techNetProfit = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            BigDecimal techCommission = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            List<MonthlyCommissionReportResponse.CommissionItemDetail> details = new ArrayList<>();
+
+            for (ServiceOrderItem item : entry.getValue()) {
+                BigDecimal effectivePct = item.getCommissionPercent() != null
+                        ? item.getCommissionPercent()
+                        : defaultPct;
+                BigDecimal itemCommission = item.getCommissionAmount() != null
+                        ? item.getCommissionAmount()
+                        : item.calculateCommissionAmount(effectivePct, basis);
+                BigDecimal netProfit = item.getEstimatedNetProfit();
+
+                techLabor = techLabor.add(item.getLaborCost());
+                techRevenue = techRevenue.add(item.getTotalPrice());
+                techNetProfit = techNetProfit.add(netProfit);
+                techCommission = techCommission.add(itemCommission);
+
+                details.add(new MonthlyCommissionReportResponse.CommissionItemDetail(
+                        item.getServiceOrder().getId(),
+                        item.getId(),
+                        item.getTag(),
+                        item.getApplianceDisplayName(),
+                        item.getDeliveredAt(),
+                        item.getLaborCost(),
+                        item.getTotalPrice(),
+                        netProfit,
+                        effectivePct,
+                        itemCommission
+                ));
+            }
+
+            totalCommissionableRevenue = totalCommissionableRevenue.add(techRevenue);
+            totalCommissionAmount = totalCommissionAmount.add(techCommission);
+
+            rows.add(new MonthlyCommissionReportResponse.TechnicianCommissionRow(
+                    techId,
+                    tech != null ? tech.name() : "Técnico removido",
+                    tech != null ? tech.role() : null,
+                    defaultPct,
+                    details.size(),
+                    techLabor.setScale(2, RoundingMode.HALF_UP),
+                    techRevenue.setScale(2, RoundingMode.HALF_UP),
+                    techNetProfit.setScale(2, RoundingMode.HALF_UP),
+                    techCommission.setScale(2, RoundingMode.HALF_UP),
+                    details
+            ));
+        }
+
+        rows.sort(java.util.Comparator
+                .comparing(MonthlyCommissionReportResponse.TechnicianCommissionRow::commissionTotal).reversed()
+                .thenComparing(MonthlyCommissionReportResponse.TechnicianCommissionRow::technicianName));
+
+        return new MonthlyCommissionReportResponse(
+                start,
+                end,
+                zoneId.getId(),
+                settings.technicianAssignmentEnabled(),
+                basis,
+                deliveredWithTechnicianCount,
+                deliveredUnassignedCount,
+                totalCommissionableRevenue.setScale(2, RoundingMode.HALF_UP),
+                totalCommissionAmount.setScale(2, RoundingMode.HALF_UP),
+                rows
+        );
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<OrderItemQueueResponse> listBenchQueue(
             List<ItemStatus> statuses,
             String tag,
@@ -595,11 +754,15 @@ public class ServiceOrderService {
                 .map(item -> item.getServiceOrder().getCustomerId())
                 .collect(Collectors.toSet());
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
+        Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, itemsPage.getContent());
 
         List<OrderItemQueueResponse> responses = itemsPage.getContent().stream()
                 .map(item -> OrderItemQueueResponse.from(
                         item,
-                        customersById.get(item.getServiceOrder().getCustomerId())
+                        customersById.get(item.getServiceOrder().getCustomerId()),
+                        item.getAssignedTechnicianId() != null
+                                ? technicianNames.get(item.getAssignedTechnicianId())
+                                : null
                 ))
                 .toList();
 
@@ -645,11 +808,15 @@ public class ServiceOrderService {
                 .map(item -> item.getServiceOrder().getCustomerId())
                 .collect(Collectors.toSet());
         Map<UUID, CustomerSnapshot> customersById = customerQuery.findAllByIds(customerIds, tenantId);
+        Map<UUID, String> technicianNames = resolveTechnicianNames(tenantId, itemsPage.getContent());
 
         List<OrderItemQueueResponse> responses = itemsPage.getContent().stream()
                 .map(item -> OrderItemQueueResponse.from(
                         item,
-                        customersById.get(item.getServiceOrder().getCustomerId())
+                        customersById.get(item.getServiceOrder().getCustomerId()),
+                        item.getAssignedTechnicianId() != null
+                                ? technicianNames.get(item.getAssignedTechnicianId())
+                                : null
                 ))
                 .toList();
 
@@ -672,6 +839,22 @@ public class ServiceOrderService {
                         ServiceOrderItem::getId,
                         parent -> new ServiceOrderResponse.ParentItemRef(parent.getServiceOrder().getId(), parent.getTag())
                 ));
+    }
+
+    private Map<UUID, String> resolveTechnicianNames(UUID tenantId, List<ServiceOrderItem> items) {
+        Set<UUID> techIds = items.stream()
+                .map(ServiceOrderItem::getAssignedTechnicianId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (techIds.isEmpty()) {
+            return Map.of();
+        }
+        return userDirectoryQuery.findAllByIds(techIds, tenantId).entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().name()));
+    }
+
+    private static boolean isCurrentUserOwner() {
+        return "OWNER".equals(SecurityUtils.requireCurrentUser().role());
     }
 
     private static int clampPageSize(int size) {

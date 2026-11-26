@@ -31,10 +31,20 @@ public record OrderItemQueueResponse(
         Instant finishedAt,
         UUID parentItemId,
         boolean warrantyReturn,
+        UUID assignedTechnicianId,
+        String assignedTechnicianName,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static OrderItemQueueResponse from(ServiceOrderItem item, CustomerSnapshot customer) {
+        return from(item, customer, null);
+    }
+
+    public static OrderItemQueueResponse from(
+            ServiceOrderItem item,
+            CustomerSnapshot customer,
+            String assignedTechnicianName
+    ) {
         ServiceOrder order = item.getServiceOrder();
         return new OrderItemQueueResponse(
                 item.getId(),
@@ -56,6 +66,8 @@ public record OrderItemQueueResponse(
                 item.getFinishedAt(),
                 item.getParentItemId(),
                 item.isWarrantyReturn(),
+                item.getAssignedTechnicianId(),
+                assignedTechnicianName,
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

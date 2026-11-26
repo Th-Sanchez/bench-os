@@ -1,5 +1,6 @@
 package com.benchos.api.iam.internal.web.dto;
 
+import com.benchos.api.iam.CommissionBasis;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,8 @@ public record UpdateTenantSettingsRequest(
         Boolean deliverySignatureEnabled,
         @Size(max = 120) String pixKey,
         @Size(max = 60) String pixReceiverName,
-        @Size(max = 60) String pixReceiverCity
+        @Size(max = 60) String pixReceiverCity,
+        Boolean technicianAssignmentEnabled,
+        CommissionBasis commissionBasis
 ) {
 }
