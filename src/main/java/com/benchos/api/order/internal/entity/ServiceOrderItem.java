@@ -63,6 +63,9 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(columnDefinition = "TEXT")
     private String accessories;
 
+    @Column(name = "intake_checklist", columnDefinition = "TEXT")
+    private String intakeChecklist;
+
     @Column(name = "reported_issue", nullable = false, columnDefinition = "TEXT")
     private String reportedIssue;
 
@@ -158,6 +161,38 @@ public class ServiceOrderItem extends TenantAwareEntity {
                 accessories,
                 reportedIssue,
                 null,
+                null,
+                false,
+                DEFAULT_WARRANTY_DAYS
+        );
+    }
+
+    ServiceOrderItem(
+            UUID tenantId,
+            ServiceOrder serviceOrder,
+            int itemIndex,
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue,
+            List<IntakeChecklistEntry> intakeChecklist
+    ) {
+        this(
+                tenantId,
+                serviceOrder,
+                itemIndex,
+                applianceType,
+                brand,
+                model,
+                voltage,
+                serialNumber,
+                accessories,
+                reportedIssue,
+                intakeChecklist,
+                null,
                 false,
                 DEFAULT_WARRANTY_DAYS
         );
@@ -178,6 +213,40 @@ public class ServiceOrderItem extends TenantAwareEntity {
             boolean warrantyReturn,
             int initialWarrantyDays
     ) {
+        this(
+                tenantId,
+                serviceOrder,
+                itemIndex,
+                applianceType,
+                brand,
+                model,
+                voltage,
+                serialNumber,
+                accessories,
+                reportedIssue,
+                null,
+                parentItemId,
+                warrantyReturn,
+                initialWarrantyDays
+        );
+    }
+
+    ServiceOrderItem(
+            UUID tenantId,
+            ServiceOrder serviceOrder,
+            int itemIndex,
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue,
+            List<IntakeChecklistEntry> intakeChecklist,
+            UUID parentItemId,
+            boolean warrantyReturn,
+            int initialWarrantyDays
+    ) {
         super(tenantId);
         Instant now = Instant.now();
         this.id = UuidV7Generator.next();
@@ -189,6 +258,7 @@ public class ServiceOrderItem extends TenantAwareEntity {
         this.voltage = voltage;
         this.serialNumber = normalizeOptional(serialNumber);
         this.accessories = normalizeOptional(accessories);
+        this.intakeChecklist = IntakeChecklistCodec.encodeAndValidate(intakeChecklist);
         this.reportedIssue = reportedIssue.trim();
         this.status = ItemStatus.RECEIVED;
         this.laborCost = ZERO_AMOUNT;
@@ -491,6 +561,10 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public String getAccessories() {
         return accessories;
+    }
+
+    public List<IntakeChecklistEntry> getIntakeChecklist() {
+        return IntakeChecklistCodec.decode(intakeChecklist);
     }
 
     public String getReportedIssue() {

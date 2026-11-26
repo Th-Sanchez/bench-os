@@ -13,6 +13,8 @@ import com.benchos.api.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -43,7 +45,8 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getWhatsappReadyTemplate(),
                 settings.getCustomApplianceTypeList(),
                 settings.getGoogleReviewUrl(),
-                settings.isDeliverySignatureEnabled()
+                settings.isDeliverySignatureEnabled(),
+                settings.getIntakeChecklistTemplateMap()
         );
     }
 
@@ -99,6 +102,22 @@ public class TenantSettingsService implements TenantSettingsQuery {
         UUID tenantId = TenantContext.requireCurrentTenant();
         TenantSettings settings = findOrThrow(tenantId);
         settings.removeCustomApplianceType(name);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateIntakeChecklists(Map<String, List<String>> templates) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateIntakeChecklistTemplates(templates);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse resetIntakeChecklists() {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.resetIntakeChecklistTemplates();
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
 

@@ -2,6 +2,7 @@ package com.benchos.api.order.internal.web.dto;
 
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.Voltage;
+import com.benchos.api.order.internal.entity.IntakeChecklistEntry;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ public record PublicOrderItemResponse(
         Voltage voltage,
         String serialNumber,
         String accessories,
+        List<IntakeChecklistEntry> intakeChecklist,
         String reportedIssue,
         ItemStatus status,
         String technicalDiagnosis,
@@ -48,6 +50,7 @@ public record PublicOrderItemResponse(
                 item.getVoltage(),
                 item.getSerialNumber(),
                 item.getAccessories(),
+                item.getIntakeChecklist(),
                 item.getReportedIssue(),
                 item.getStatus(),
                 item.getTechnicalDiagnosis(),

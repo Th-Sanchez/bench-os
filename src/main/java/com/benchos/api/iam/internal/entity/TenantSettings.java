@@ -11,6 +11,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -59,6 +60,9 @@ public class TenantSettings {
     @Column(name = "delivery_signature_enabled", nullable = false)
     private boolean deliverySignatureEnabled;
 
+    @Column(name = "intake_checklist_templates", columnDefinition = "TEXT")
+    private String intakeChecklistTemplates;
+
     protected TenantSettings() {
     }
 
@@ -74,6 +78,7 @@ public class TenantSettings {
         settings.customApplianceTypes = null;
         settings.googleReviewUrl = null;
         settings.deliverySignatureEnabled = DEFAULT_DELIVERY_SIGNATURE_ENABLED;
+        settings.intakeChecklistTemplates = null;
         return settings;
     }
 
@@ -236,5 +241,17 @@ public class TenantSettings {
 
     public boolean isDeliverySignatureEnabled() {
         return deliverySignatureEnabled;
+    }
+
+    public Map<String, List<String>> getIntakeChecklistTemplateMap() {
+        return IntakeChecklistTemplateCodec.decodeOrDefault(this.intakeChecklistTemplates);
+    }
+
+    public void updateIntakeChecklistTemplates(Map<String, List<String>> templates) {
+        this.intakeChecklistTemplates = IntakeChecklistTemplateCodec.encodeAndValidate(templates);
+    }
+
+    public void resetIntakeChecklistTemplates() {
+        this.intakeChecklistTemplates = null;
     }
 }

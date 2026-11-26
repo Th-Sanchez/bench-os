@@ -94,7 +94,8 @@ public class ServiceOrderService {
                     itemReq.voltage(),
                     itemReq.serialNumber(),
                     itemReq.accessories(),
-                    itemReq.reportedIssue()
+                    itemReq.reportedIssue(),
+                    itemReq.intakeChecklist()
             );
         }
 

@@ -2,6 +2,7 @@ package com.benchos.api.iam;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -17,6 +18,7 @@ public record TenantSettingsSnapshot(
         String whatsappReadyTemplate,
         List<String> customApplianceTypes,
         String googleReviewUrl,
-        boolean deliverySignatureEnabled
+        boolean deliverySignatureEnabled,
+        Map<String, List<String>> intakeChecklistTemplates
 ) {
 }

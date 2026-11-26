@@ -85,6 +85,19 @@ public class ServiceOrder extends TenantAwareEntity {
             String accessories,
             String reportedIssue
     ) {
+        return addItem(applianceType, brand, model, voltage, serialNumber, accessories, reportedIssue, null);
+    }
+
+    public ServiceOrderItem addItem(
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue,
+            List<IntakeChecklistEntry> intakeChecklist
+    ) {
         int nextIndex = this.items.size() + 1;
         ServiceOrderItem item = new ServiceOrderItem(
                 getTenantId(),
@@ -96,7 +109,8 @@ public class ServiceOrder extends TenantAwareEntity {
                 voltage,
                 serialNumber,
                 accessories,
-                reportedIssue
+                reportedIssue,
+                intakeChecklist
         );
         this.items.add(item);
         touch();

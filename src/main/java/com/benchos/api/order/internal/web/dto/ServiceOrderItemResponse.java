@@ -2,11 +2,13 @@ package com.benchos.api.order.internal.web.dto;
 
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.Voltage;
+import com.benchos.api.order.internal.entity.IntakeChecklistEntry;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record ServiceOrderItemResponse(
@@ -19,6 +21,7 @@ public record ServiceOrderItemResponse(
         Voltage voltage,
         String serialNumber,
         String accessories,
+        List<IntakeChecklistEntry> intakeChecklist,
         String reportedIssue,
         String technicalDiagnosis,
         ItemStatus status,
@@ -64,6 +67,7 @@ public record ServiceOrderItemResponse(
                 item.getVoltage(),
                 item.getSerialNumber(),
                 item.getAccessories(),
+                item.getIntakeChecklist(),
                 item.getReportedIssue(),
                 item.getTechnicalDiagnosis(),
                 item.getStatus(),

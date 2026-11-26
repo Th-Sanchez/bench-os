@@ -526,6 +526,39 @@
     .toast-success { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success-border); }
     .toast-error { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-border); }
 
+    .checklist-box {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .checklist-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .checklist-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: #fff;
+      color: var(--text-secondary);
+    }
+    .checklist-pill.checked {
+      background: var(--success-soft);
+      border-color: var(--success-border);
+      color: var(--success-dark);
+      font-weight: 600;
+    }
+
     .footer {
       text-align: center;
       margin-top: 4px;
@@ -817,6 +850,21 @@
               '</div>'
             : '';
 
+          const checklistItems = Array.isArray(item.intakeChecklist) ? item.intakeChecklist : [];
+          const checklistHtml = checklistItems.length > 0
+            ? '<div class="checklist-box">' +
+                '<div class="overline" style="margin:0">CONFERÊNCIA NA ENTRADA</div>' +
+                '<div class="checklist-pills">' +
+                  checklistItems.map(function (entry) {
+                    const isChecked = Boolean(entry.checked);
+                    return '<span class="checklist-pill ' + (isChecked ? 'checked' : '') + '">' +
+                      (isChecked ? '✓ ' : '✕ ') + escapeHtml(entry.label) +
+                    '</span>';
+                  }).join('') +
+                '</div>' +
+              '</div>'
+            : '';
+
           const safePhotos = (item.photos || []).map(function (p) {
             return { stage: p.stage, viewUrl: sanitizeHttpUrl(p.viewUrl) };
           }).filter(function (p) { return Boolean(p.viewUrl); });
@@ -886,6 +934,7 @@
                 '<div class="step-bars">' + barsHtml + '</div>' +
                 '<div class="helper-line">' + escapeHtml(step.helper) + '</div>' +
               '</div>' +
+              checklistHtml +
               diagHtml +
               decisionHtml +
               photosHtml +
