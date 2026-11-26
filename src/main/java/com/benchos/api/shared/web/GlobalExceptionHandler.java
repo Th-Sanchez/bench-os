@@ -3,8 +3,10 @@ package com.benchos.api.shared.web;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ConflictException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
+import com.benchos.api.shared.observability.SentryReporter;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PessimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -32,6 +34,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final SentryReporter sentryReporter;
+
+    public GlobalExceptionHandler(SentryReporter sentryReporter) {
+        this.sentryReporter = sentryReporter;
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex) {
@@ -93,8 +101,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleUnexpected(Exception ex) {
+    public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception while processing request", ex);
+        sentryReporter.captureUnexpectedException(ex, request);
         return buildProblem(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",

@@ -480,6 +480,44 @@
       margin-top: 4px;
     }
 
+    /* Digital Signature Block */
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 28px;
+      margin: 18px 8px 16px;
+      align-items: end;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .sig-col {
+      text-align: center;
+    }
+    .sig-img-wrap {
+      height: 68px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 4px;
+    }
+    .sig-img {
+      max-width: 100%;
+      max-height: 64px;
+      object-fit: contain;
+    }
+    .sig-line {
+      border-top: 1px solid #64748B;
+      padding-top: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .sig-role {
+      font-size: 10px;
+      color: #64748B;
+      margin-top: 2px;
+    }
+
     /* Footer */
     .doc-footer {
       border-top: 1px solid #E2E8F0;
@@ -496,6 +534,57 @@
       font-weight: 700;
       color: #0F172A;
     }
+    .banner-brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .banner-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #FFFFFF;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+    .warranty-custom-terms {
+      color: #1E293B;
+      font-size: 11.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .care-box {
+      border: 1px solid #BBF7D0;
+      background: #F0FDF4;
+      border-radius: 10px;
+      padding: 12px 15px;
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .care-heading {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      color: #166534;
+      margin-bottom: 6px;
+    }
+    .care-cat {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-top: 6px;
+      margin-bottom: 3px;
+    }
+    .care-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 11px;
+      color: #1E293B;
+      line-height: 1.45;
+    }
+    .care-list li { margin-bottom: 3px; }
 
     /* Loading & Empty States */
     .center-box {
@@ -526,6 +615,7 @@
         border-top: 1px solid #E2E8F0;
       }
       .warranty-dates { grid-template-columns: 1fr; }
+      .signatures { grid-template-columns: 1fr; gap: 18px; }
     }
 
     @media print {
@@ -664,6 +754,22 @@
           expiryDate: expiryDate,
           warrantyDays: Number(item.warrantyDays),
         };
+      }
+
+      function toSignatureDataUri(svg) {
+        if (!svg || typeof svg !== 'string') return '';
+        const trimmed = svg.trim();
+        if (!trimmed.startsWith('<svg')) return '';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(trimmed);
+      }
+
+      function sanitizeRasterDataUrl(raw) {
+        if (!raw || typeof raw !== 'string') return '';
+        const trimmed = raw.trim();
+        if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+          return trimmed;
+        }
+        return '';
       }
 
       function renderReceipt(order) {
@@ -807,11 +913,13 @@
                       return '<div class="w-list-row"><span><strong>#' + escapeHtml(e.item.tag) + '</strong> ' + escapeHtml(label) + '</span><span>' + e.warranty.warrantyDays + 'd · válida até <strong>' + escapeHtml(formatFullDate(e.warranty.expiryDate)) + '</strong></span></div>';
                     }).join('') +
                   '</div>') +
-              '<ol class="warranty-terms">' +
-                '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
-                '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
-                '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
-              '</ol>' +
+              (order.warrantyTerms && order.warrantyTerms.trim()
+                ? '<div class="warranty-custom-terms">' + escapeHtml(order.warrantyTerms.trim()) + '</div>'
+                : '<ol class="warranty-terms">' +
+                    '<li>A garantia cobre exclusivamente o defeito diagnosticado, o serviço técnico executado e as peças substituídas nos aparelhos listados nesta Ordem de Serviço (<strong>OS #' + safeOrderNumber + '</strong>).</li>' +
+                    '<li>Não estão cobertos danos decorrentes de queda, umidade/líquidos, oscilação ou descarga elétrica, ligação em voltagem incorreta, mau uso ou abertura/intervenção do aparelho por terceiros.</li>' +
+                    '<li>Para acionar a garantia dentro do prazo, apresente este comprovante ou informe o número da <strong>OS #' + safeOrderNumber + '</strong> no balcão ou pelo WhatsApp da oficina.</li>' +
+                  '</ol>') +
             '</section>'
           : '<section class="warranty-box neutral">' +
               '<div class="warranty-top">' +
@@ -830,15 +938,68 @@
             }).join('')
           : '';
 
+        const seenCareCats = {};
+        const careGroups = [];
+        deliveredItems.forEach(function (i) {
+          const tips = Array.isArray(i.careTips) ? i.careTips : [];
+          const catKey = (i.applianceType || '').trim().toLowerCase();
+          if (tips.length > 0 && catKey && !seenCareCats[catKey]) {
+            seenCareCats[catKey] = true;
+            careGroups.push({ category: i.applianceType, tips: tips });
+          }
+        });
+        const careHtml = careGroups.length > 0
+          ? '<section class="care-box">' +
+              '<div class="care-heading">Dicas de Conservação — Faça seu aparelho durar mais</div>' +
+              careGroups.map(function (grp) {
+                return (careGroups.length > 1 ? '<div class="care-cat">' + escapeHtml(grp.category) + '</div>' : '') +
+                  '<ul class="care-list">' +
+                    grp.tips.map(function (tip) { return '<li>' + escapeHtml(tip) + '</li>'; }).join('') +
+                  '</ul>';
+              }).join('') +
+            '</section>'
+          : '';
+
         const createdDateLabel = order.createdAt ? formatFullDate(new Date(order.createdAt)) : '—';
+
+        const signedEntries = entries
+          .filter(function (e) { return Boolean(toSignatureDataUri(e.item.deliverySignatureSvg)); })
+          .sort(function (a, b) {
+            return b.warranty.deliveredDate.getTime() - a.warranty.deliveredDate.getTime();
+          });
+        const primarySigned = signedEntries[0] || null;
+        const primarySigUri = primarySigned ? toSignatureDataUri(primarySigned.item.deliverySignatureSvg) : '';
+        const signaturesHtml = primarySigUri
+          ? '<section class="signatures">' +
+              '<div class="sig-col">' +
+                '<div class="sig-img-wrap"></div>' +
+                '<div class="sig-line">' + escapeHtml(shopName) + '</div>' +
+                '<div class="sig-role">Responsável Técnico / Oficina</div>' +
+              '</div>' +
+              '<div class="sig-col">' +
+                '<div class="sig-img-wrap">' +
+                  '<img class="sig-img" src="' + primarySigUri + '" alt="Assinatura digital na retirada" />' +
+                '</div>' +
+                '<div class="sig-line">Assinatura Digital do Cliente</div>' +
+                '<div class="sig-role">Registrada na retirada em ' + escapeHtml(formatDateTime(primarySigned.warranty.deliveredDate)) + '</div>' +
+              '</div>' +
+            '</section>'
+          : '';
+
+        const safeLogoUrl = sanitizeRasterDataUrl(order.shopLogoDataUrl);
 
         app.innerHTML =
           '<header class="banner">' +
-            '<div>' +
-              '<div class="shop-eyebrow">COMPROVANTE DE ENTREGA & GARANTIA</div>' +
-              '<h1 class="shop-name">' + escapeHtml(shopName) + '</h1>' +
-              (order.shopPhone ? '<p class="shop-meta">Telefone / WhatsApp: ' + escapeHtml(formatPhoneDisplay(order.shopPhone)) + '</p>' : '') +
-              '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
+            '<div class="banner-brand-row">' +
+              (safeLogoUrl ? '<img class="banner-logo" src="' + safeLogoUrl + '" alt="Logo da oficina" />' : '') +
+              '<div>' +
+                '<div class="shop-eyebrow">COMPROVANTE DE ENTREGA & GARANTIA</div>' +
+                '<h1 class="shop-name">' + escapeHtml(shopName) + '</h1>' +
+                (order.shopPhone ? '<p class="shop-meta">Telefone / WhatsApp: ' + escapeHtml(formatPhoneDisplay(order.shopPhone)) + '</p>' : '') +
+                (order.shopAddress ? '<p class="shop-meta">' + escapeHtml(order.shopAddress) + '</p>' : '') +
+                (order.businessHours ? '<p class="shop-meta">Horário: ' + escapeHtml(order.businessHours) + '</p>' : '') +
+                '<p class="shop-meta">Abertura da OS: ' + escapeHtml(createdDateLabel) + '</p>' +
+              '</div>' +
             '</div>' +
             '<div class="doc-box">' +
               '<div class="doc-badge">OS #' + safeOrderNumber + '</div>' +
@@ -874,6 +1035,8 @@
           '</section>' +
 
           warrantyHtml +
+          careHtml +
+          signaturesHtml +
 
           '<footer class="doc-footer">' +
             '<span>Comprovante digital oficial · OS #' + safeOrderNumber + '</span>' +

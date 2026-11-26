@@ -14,13 +14,16 @@ import com.benchos.api.order.internal.repository.ServiceOrderItemRepository;
 import com.benchos.api.order.internal.repository.ServiceOrderRepository;
 import com.benchos.api.order.internal.web.dto.PublicOrderItemPhotoResponse;
 import com.benchos.api.order.internal.web.dto.PublicOrderResponse;
+import com.benchos.api.order.internal.web.dto.SubmitOrderRatingRequest;
 import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
+import com.benchos.api.shared.pix.PixBrCodeGenerator;
 import com.benchos.api.shared.storage.ObjectStorageService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -104,6 +107,17 @@ public class PublicOrderService {
         return buildPublicResponse(order);
     }
 
+    @Transactional
+    public PublicOrderResponse submitRating(UUID publicToken, SubmitOrderRatingRequest request) {
+        ServiceOrder order = serviceOrderRepository.findForUpdateByPublicToken(publicToken)
+                .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
+
+        order.submitCustomerRating(request.rating(), request.feedback(), Instant.now());
+        serviceOrderRepository.saveAndFlush(order);
+
+        return buildPublicResponse(order);
+    }
+
     private void publishQuoteRespondedEvent(
             ServiceOrder order,
             ServiceOrderItem item,
@@ -142,6 +156,7 @@ public class PublicOrderService {
     private PublicOrderResponse buildPublicResponse(ServiceOrder order) {
         String shopName = tenantSettingsQuery.getShopName(order.getTenantId());
         String shopPhone = tenantSettingsQuery.getShopPhone(order.getTenantId());
+        TenantSettingsSnapshot settings = tenantSettingsQuery.getSettings(order.getTenantId());
 
         List<UUID> itemIds = order.getItems().stream().map(ServiceOrderItem::getId).toList();
         Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId = itemIds.isEmpty()
@@ -160,6 +175,70 @@ public class PublicOrderService {
                                 )
                         ));
 
-        return PublicOrderResponse.from(order, shopName, shopPhone, photosByItemId);
+        BigDecimal readyTotal = order.getItems().stream()
+                .filter(item -> item.getStatus() == ItemStatus.READY_FOR_PICKUP)
+                .map(ServiceOrderItem::getTotalPrice)
+                .filter(price -> price != null && price.compareTo(BigDecimal.ZERO) > 0)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal pixAmount = null;
+        String pixPayload = null;
+        String pixQrSvg = null;
+        if (settings.pixKey() != null && !settings.pixKey().isBlank() && readyTotal.compareTo(BigDecimal.ZERO) > 0) {
+            String receiverName = (settings.pixReceiverName() != null && !settings.pixReceiverName().isBlank())
+                    ? settings.pixReceiverName()
+                    : shopName;
+            String receiverCity = (settings.pixReceiverCity() != null && !settings.pixReceiverCity().isBlank())
+                    ? settings.pixReceiverCity()
+                    : "BRASIL";
+            pixAmount = readyTotal;
+            pixPayload = PixBrCodeGenerator.generate(
+                    settings.pixKey(),
+                    receiverName,
+                    receiverCity,
+                    readyTotal,
+                    "OS" + order.getOrderNumber()
+            );
+            pixQrSvg = PixBrCodeGenerator.renderQrSvg(pixPayload);
+        }
+
+        Map<UUID, List<String>> careTipsByItemId = order.getItems().stream()
+                .filter(item -> item.getStatus() == ItemStatus.DELIVERED)
+                .collect(Collectors.toMap(
+                        ServiceOrderItem::getId,
+                        item -> resolveCareTipsForAppliance(settings.careTipsTemplates(), item.getApplianceType())
+                ));
+
+        return PublicOrderResponse.from(
+                order,
+                shopName,
+                shopPhone,
+                settings.shopLogoDataUrl(),
+                settings.shopAddress(),
+                settings.businessHours(),
+                settings.warrantyTerms(),
+                settings.googleReviewUrl(),
+                pixAmount,
+                pixPayload,
+                pixQrSvg,
+                photosByItemId,
+                careTipsByItemId
+        );
+    }
+
+    private static List<String> resolveCareTipsForAppliance(
+            Map<String, List<String>> templates,
+            String applianceType
+    ) {
+        if (templates == null || templates.isEmpty() || applianceType == null || applianceType.isBlank()) {
+            return List.of();
+        }
+        String normalized = applianceType.trim().toLowerCase();
+        for (Map.Entry<String, List<String>> entry : templates.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().trim().toLowerCase().equals(normalized)) {
+                return entry.getValue() == null ? List.of() : entry.getValue();
+            }
+        }
+        return List.of();
     }
 }

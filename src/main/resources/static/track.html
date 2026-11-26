@@ -392,6 +392,131 @@
     }
     .btn-whatsapp:hover { background: #15803D; }
 
+    /* Post-Delivery Star Rating & Google Review */
+    .rating-card {
+      background: var(--bg-surface);
+      border: 1.5px solid #FDE68A;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .rating-card.submitted {
+      border-color: var(--success-border);
+      background: var(--success-soft);
+    }
+    .rating-head {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .rating-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+    .rating-sub {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+    .stars-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 4px 0;
+    }
+    .star-btn {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: #CBD5E1;
+      transition: transform 0.12s, border-color 0.12s, background 0.12s, color 0.12s;
+    }
+    .star-btn:hover { transform: scale(1.06); border-color: #FCD34D; }
+    .star-btn.active {
+      color: #F59E0B;
+      background: #FFFBEB;
+      border-color: #FCD34D;
+    }
+    .rating-caption {
+      text-align: center;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--warning-dark);
+      min-height: 18px;
+    }
+    .rating-textarea {
+      width: 100%;
+      min-height: 76px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-canvas);
+      resize: vertical;
+    }
+    .rating-textarea:focus {
+      outline: 2px solid var(--brand-border);
+      border-color: var(--brand);
+      background: #fff;
+    }
+    .rating-done-stars {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #F59E0B;
+    }
+    .rating-done-stars .star-dim { color: #CBD5E1; }
+    .rating-quote {
+      background: #fff;
+      border: 1px solid var(--success-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-style: italic;
+      line-height: 1.45;
+    }
+    .google-cta-box {
+      background: #fff;
+      border: 1.5px solid #BFDBFE;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .google-cta-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    .google-cta-text {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+    .btn-google {
+      background: #1A73E8;
+      color: #fff;
+      width: 100%;
+      min-height: 48px;
+      font-size: 14.5px;
+    }
+    .btn-google:hover { background: #1557B0; }
+
     .toast {
       border-radius: 10px;
       padding: 12px 14px;
@@ -400,6 +525,149 @@
     }
     .toast-success { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success-border); }
     .toast-error { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-border); }
+
+    .checklist-box {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .checklist-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .checklist-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: #fff;
+      color: var(--text-secondary);
+    }
+    .checklist-pill.checked {
+      background: var(--success-soft);
+      border-color: var(--success-border);
+      color: var(--success-dark);
+      font-weight: 600;
+    }
+
+    /* Pix Payment Card */
+    .pix-card {
+      background: #fff;
+      border: 1.5px solid #99F6E4;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pix-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .pix-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: #0F766E;
+    }
+    .pix-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+    .pix-qr-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+    }
+    .pix-qr-img {
+      width: 196px;
+      height: 196px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-pix {
+      background: #0F766E;
+      color: #fff;
+      width: 100%;
+      min-height: 46px;
+      font-size: 14px;
+    }
+    .btn-pix:hover { background: #115E59; }
+    .pix-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.45;
+    }
+    .brand-logo-img {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #fff;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .shop-info-list {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+    .care-tips-box {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: 10px;
+      padding: 12px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .care-tips-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: #166534;
+    }
+    .care-tips-list {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12.5px;
+      color: #1E293B;
+      line-height: 1.45;
+    }
 
     .footer {
       text-align: center;
@@ -493,7 +761,7 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-icon" aria-hidden="true">
+        <div id="brandLogoWrap" class="brand-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
@@ -559,10 +827,28 @@
         COMPLETED: 'Concluído',
       };
 
+      const RATING_LABELS = {
+        1: 'Muito insatisfeito',
+        2: 'Insatisfeito',
+        3: 'Regular',
+        4: 'Satisfeito',
+        5: 'Excelente!',
+      };
+
       let currentOrder = null;
       let feedbackMessage = null;
       let pendingAction = null;
       let isSubmitting = false;
+      let selectedStars = 0;
+      let ratingFeedbackDraft = '';
+      let isSubmittingRating = false;
+
+      function starSvg(filled, size) {
+        const s = size || 24;
+        return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="' + (filled ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' +
+        '</svg>';
+      }
 
       function escapeHtml(str) {
         return String(str ?? '')
@@ -635,6 +921,15 @@
         }
       }
 
+      function sanitizeRasterDataUrl(raw) {
+        if (!raw || typeof raw !== 'string') return '';
+        const trimmed = raw.trim();
+        if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+          return trimmed;
+        }
+        return '';
+      }
+
       function renderOrder(order) {
         currentOrder = order;
         const safeOrderNumber = escapeHtml(String(Number(order.orderNumber) || 0));
@@ -643,6 +938,13 @@
         const osPill = document.getElementById('osPill');
         osPill.textContent = 'OS #' + safeOrderNumber;
         osPill.style.display = 'inline-block';
+
+        const safeLogoUrl = sanitizeRasterDataUrl(order.shopLogoDataUrl);
+        const logoWrap = document.getElementById('brandLogoWrap');
+        if (logoWrap && safeLogoUrl) {
+          logoWrap.className = '';
+          logoWrap.innerHTML = '<img class="brand-logo-img" src="' + safeLogoUrl + '" alt="Logo" />';
+        }
 
         const app = document.getElementById('app');
         const itemsHtml = (order.items || []).map(function (item) {
@@ -671,6 +973,21 @@
             ? '<div class="diag-box ' + (item.status === 'WAITING_PARTS' ? 'warn' : '') + '">' +
                 '<div class="overline">' + (item.status === 'WAITING_PARTS' ? 'STATUS DE PEÇA / DIAGNÓSTICO' : 'DIAGNÓSTICO TÉCNICO') + '</div>' +
                 '<div class="diag-body">' + escapeHtml(item.technicalDiagnosis) + '</div>' +
+              '</div>'
+            : '';
+
+          const checklistItems = Array.isArray(item.intakeChecklist) ? item.intakeChecklist : [];
+          const checklistHtml = checklistItems.length > 0
+            ? '<div class="checklist-box">' +
+                '<div class="overline" style="margin:0">CONFERÊNCIA NA ENTRADA</div>' +
+                '<div class="checklist-pills">' +
+                  checklistItems.map(function (entry) {
+                    const isChecked = Boolean(entry.checked);
+                    return '<span class="checklist-pill ' + (isChecked ? 'checked' : '') + '">' +
+                      (isChecked ? '✓ ' : '✕ ') + escapeHtml(entry.label) +
+                    '</span>';
+                  }).join('') +
+                '</div>' +
               '</div>'
             : '';
 
@@ -726,6 +1043,19 @@
               '</div>';
           }
 
+          const careTips = item.status === 'DELIVERED' && Array.isArray(item.careTips) ? item.careTips : [];
+          const careTipsHtml = careTips.length > 0
+            ? '<div class="care-tips-box">' +
+                '<div class="care-tips-title">' +
+                  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>' +
+                  'Como fazer seu ' + escapeHtml(item.applianceType || 'aparelho') + ' durar mais' +
+                '</div>' +
+                '<ul class="care-tips-list">' +
+                  careTips.map(function (tip) { return '<li>' + escapeHtml(tip) + '</li>'; }).join('') +
+                '</ul>' +
+              '</div>'
+            : '';
+
           return (
             '<section class="card">' +
               '<div class="row-between">' +
@@ -743,9 +1073,11 @@
                 '<div class="step-bars">' + barsHtml + '</div>' +
                 '<div class="helper-line">' + escapeHtml(step.helper) + '</div>' +
               '</div>' +
+              checklistHtml +
               diagHtml +
               decisionHtml +
               photosHtml +
+              careTipsHtml +
               footerHtml +
             '</section>'
           );
@@ -755,6 +1087,88 @@
         const receiptBtnHtml = hasDelivered
           ? '<a class="btn btn-primary" style="width:100%;min-height:48px" href="/track/' + encodeURIComponent(token) + '/receipt">Ver Comprovante e Termo de Garantia</a>'
           : '';
+
+        let pixCardHtml = '';
+        const pixAmountNum = Number(order.pixAmount) || 0;
+        const pixQrRaw = typeof order.pixQrSvg === 'string' ? order.pixQrSvg.trim() : '';
+        if (order.pixPayload && pixAmountNum > 0 && pixQrRaw.indexOf('<svg') === 0) {
+          const pixQrDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pixQrRaw);
+          pixCardHtml =
+            '<section class="pix-card">' +
+              '<div class="pix-head">' +
+                '<div class="pix-badge">' +
+                  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h6"/></svg>' +
+                  'Pagar via Pix' +
+                '</div>' +
+                '<div class="pix-amount">' + escapeHtml(formatMoney(pixAmountNum)) + '</div>' +
+              '</div>' +
+              '<div class="pix-qr-wrap">' +
+                '<img class="pix-qr-img" src="' + pixQrDataUri + '" alt="QR Code Pix" />' +
+              '</div>' +
+              '<button id="copyPixBtn" type="button" class="btn btn-pix">Copiar código Pix (Copia e Cola)</button>' +
+              '<div class="pix-hint">Escaneie o QR Code ou copie o código no app do seu banco. Depois, apresente o comprovante na retirada ou envie no WhatsApp da oficina.</div>' +
+            '</section>';
+        }
+
+        const safeGoogleUrl = sanitizeHttpUrl(order.googleReviewUrl);
+        let ratingHtml = '';
+        if (hasDelivered) {
+          const submittedRating = Number(order.customerRating) || 0;
+          if (submittedRating >= 1 && submittedRating <= 5) {
+            const doneStars = [1, 2, 3, 4, 5].map(function (n) {
+              return '<span class="' + (n <= submittedRating ? '' : 'star-dim') + '">' + starSvg(n <= submittedRating, 20) + '</span>';
+            }).join('');
+            const googleBoxHtml = submittedRating === 5 && safeGoogleUrl
+              ? '<div class="google-cta-box">' +
+                  '<div class="google-cta-title">Ficamos muito felizes com suas 5 estrelas!</div>' +
+                  '<div class="google-cta-text">Sua recomendação ajuda outras pessoas a confiarem no trabalho da <strong>' + escapeHtml(order.shopName) + '</strong>. Se puder, deixe sua avaliação no Google:</div>' +
+                  '<a class="btn btn-google" href="' + escapeHtml(safeGoogleUrl) + '" target="_blank" rel="noopener noreferrer">' +
+                    starSvg(true, 17) + ' Avaliar no Google' +
+                  '</a>' +
+                '</div>'
+              : '';
+
+            ratingHtml =
+              '<section class="rating-card submitted">' +
+                '<div class="row-between">' +
+                  '<div class="rating-title">Obrigado pela sua avaliação!</div>' +
+                  '<div class="rating-done-stars" aria-label="' + submittedRating + ' de 5 estrelas">' + doneStars + '</div>' +
+                '</div>' +
+                (order.customerFeedback
+                  ? '<div class="rating-quote">"' + escapeHtml(order.customerFeedback) + '"</div>'
+                  : '') +
+                (submittedRating < 5
+                  ? '<div class="rating-sub">Agradecemos o seu retorno! Ele nos ajuda a aprimorar ainda mais nosso atendimento.</div>'
+                  : (!safeGoogleUrl
+                      ? '<div class="rating-sub">Ficamos muito felizes em saber que você teve uma excelente experiência conosco!</div>'
+                      : '')) +
+                googleBoxHtml +
+              '</section>';
+          } else {
+            const starButtonsHtml = [1, 2, 3, 4, 5].map(function (n) {
+              const active = n <= selectedStars;
+              return '<button type="button" class="star-btn ' + (active ? 'active' : '') + '" data-star="' + n + '" aria-label="' + n + (n === 1 ? ' estrela' : ' estrelas') + '">' +
+                starSvg(active, 24) +
+              '</button>';
+            }).join('');
+            const captionText = selectedStars > 0 ? RATING_LABELS[selectedStars] : 'Toque nas estrelas para avaliar';
+
+            ratingHtml =
+              '<section class="rating-card">' +
+                '<div class="rating-head">' +
+                  '<div class="overline" style="color:var(--warning-dark);margin:0">AVALIAÇÃO DO ATENDIMENTO</div>' +
+                  '<div class="rating-title">Como foi sua experiência?</div>' +
+                  '<div class="rating-sub">Sua avaliação rápida ajuda a oficina <strong>' + escapeHtml(order.shopName) + '</strong> a manter a qualidade do serviço.</div>' +
+                '</div>' +
+                '<div class="stars-row">' + starButtonsHtml + '</div>' +
+                '<div id="ratingCaption" class="rating-caption">' + escapeHtml(captionText) + '</div>' +
+                '<textarea id="ratingFeedback" class="rating-textarea" maxlength="1000" placeholder="Conte brevemente como foi o atendimento (opcional)">' + escapeHtml(ratingFeedbackDraft) + '</textarea>' +
+                '<button id="ratingSubmitBtn" type="button" class="btn btn-primary" style="width:100%"' + (selectedStars < 1 || isSubmittingRating ? ' disabled' : '') + '>' +
+                  (isSubmittingRating ? 'Enviando avaliação...' : 'Enviar avaliação') +
+                '</button>' +
+              '</section>';
+          }
+        }
 
         const waDigits = formatWaPhone(order.shopPhone);
         const waText = encodeURIComponent('Olá! Gostaria de falar sobre a OS #' + safeOrderNumber + '.');
@@ -778,10 +1192,18 @@
             '</div>' +
           '</div>' +
           itemsHtml +
+          pixCardHtml +
           receiptBtnHtml +
+          ratingHtml +
           '<section class="card" style="gap:6px">' +
             '<div style="font-weight:600;font-size:14px">Instruções de Retirada</div>' +
             '<p style="font-size:13px;color:var(--text-secondary);line-height:1.5">Quando o status estiver como <strong>Pronto p/ Retirada</strong>, apresente o número da ordem <strong style="font-family:\'JetBrains Mono\',monospace">#' + safeOrderNumber + '</strong> no balcão da oficina <strong>' + escapeHtml(order.shopName) + '</strong>.</p>' +
+            ((order.shopAddress || order.businessHours)
+              ? '<div class="shop-info-list">' +
+                  (order.shopAddress ? '<div><strong>Endereço:</strong> ' + escapeHtml(order.shopAddress) + '</div>' : '') +
+                  (order.businessHours ? '<div><strong>Horário:</strong> ' + escapeHtml(order.businessHours) + '</div>' : '') +
+                '</div>'
+              : '') +
           '</section>' +
           waBtnHtml +
           '<footer class="footer">' +
@@ -831,6 +1253,96 @@
             document.getElementById('confirmModal').classList.add('open');
           });
         });
+
+        document.querySelectorAll('[data-star]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            if (isSubmittingRating) return;
+            selectedStars = Number(btn.getAttribute('data-star')) || 0;
+            const feedbackEl = document.getElementById('ratingFeedback');
+            if (feedbackEl) {
+              ratingFeedbackDraft = feedbackEl.value;
+            }
+            if (currentOrder) renderOrder(currentOrder);
+          });
+        });
+
+        const copyPixBtn = document.getElementById('copyPixBtn');
+        if (copyPixBtn && currentOrder && currentOrder.pixPayload) {
+          copyPixBtn.addEventListener('click', async function () {
+            const code = currentOrder.pixPayload;
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(code);
+              } else {
+                const ta = document.createElement('textarea');
+                ta.value = code;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+              }
+              copyPixBtn.textContent = '✓ Código Pix copiado!';
+              setTimeout(function () {
+                if (copyPixBtn) copyPixBtn.textContent = 'Copiar código Pix (Copia e Cola)';
+              }, 2600);
+            } catch (_) {
+              feedbackMessage = { type: 'error', text: 'Não foi possível copiar automaticamente. Tente escanear o QR Code.' };
+              renderOrder(currentOrder);
+            }
+          });
+        }
+
+        const feedbackInput = document.getElementById('ratingFeedback');
+        if (feedbackInput) {
+          feedbackInput.addEventListener('input', function () {
+            ratingFeedbackDraft = feedbackInput.value;
+          });
+        }
+
+        const ratingSubmitBtn = document.getElementById('ratingSubmitBtn');
+        if (ratingSubmitBtn) {
+          ratingSubmitBtn.addEventListener('click', async function () {
+            if (isSubmittingRating || selectedStars < 1 || selectedStars > 5) return;
+            isSubmittingRating = true;
+            const feedbackEl = document.getElementById('ratingFeedback');
+            const trimmedFeedback = feedbackEl ? feedbackEl.value.trim() : ratingFeedbackDraft.trim();
+            ratingFeedbackDraft = trimmedFeedback;
+            ratingSubmitBtn.disabled = true;
+            ratingSubmitBtn.textContent = 'Enviando avaliação...';
+
+            try {
+              const res = await fetch('/api/v1/public/orders/' + encodeURIComponent(token) + '/rating', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  rating: selectedStars,
+                  feedback: trimmedFeedback || null,
+                }),
+              });
+              if (!res.ok) {
+                let errText = 'Não foi possível enviar sua avaliação. Tente novamente.';
+                try {
+                  const prob = await res.json();
+                  if (prob && prob.detail) errText = prob.detail;
+                } catch (_) {}
+                feedbackMessage = { type: 'error', text: errText };
+                await loadOrder();
+                return;
+              }
+              const updated = await res.json();
+              feedbackMessage = { type: 'success', text: 'Avaliação registrada! Muito obrigado pelo seu retorno.' };
+              ratingFeedbackDraft = '';
+              renderOrder(updated);
+            } catch (_) {
+              feedbackMessage = { type: 'error', text: 'Erro de conexão ao enviar avaliação. Tente novamente.' };
+              if (currentOrder) renderOrder(currentOrder);
+            } finally {
+              isSubmittingRating = false;
+            }
+          });
+        }
       }
 
       async function loadOrder() {

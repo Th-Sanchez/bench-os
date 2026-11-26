@@ -136,7 +136,15 @@ public class OrderItemLifecycleService {
                 .map(part -> new PaymentPart(part.paymentMethod(), part.amount()))
                 .toList();
 
-        Optional<OrderItemDeliveredEvent> event = item.deliver(paymentParts, Instant.now());
+        String deliverySignatureSvg = request != null ? request.deliverySignatureSvg() : null;
+        String deliverySignerName = request != null ? request.deliverySignerName() : null;
+
+        Optional<OrderItemDeliveredEvent> event = item.deliver(
+                paymentParts,
+                deliverySignatureSvg,
+                deliverySignerName,
+                Instant.now()
+        );
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
 
         event.ifPresent(eventPublisher::publishEvent);

@@ -19,6 +19,9 @@ public record ServiceOrderResponse(
         String customerPhone,
         UUID createdByUserId,
         String notes,
+        Integer customerRating,
+        String customerFeedback,
+        Instant customerRatedAt,
         Instant createdAt,
         Instant updatedAt,
         List<ServiceOrderItemResponse> items
@@ -64,6 +67,9 @@ public record ServiceOrderResponse(
                 customer != null ? customer.phone() : null,
                 order.getCreatedByUserId(),
                 order.getNotes(),
+                order.getCustomerRating(),
+                order.getCustomerFeedback(),
+                order.getCustomerRatedAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 itemResponses

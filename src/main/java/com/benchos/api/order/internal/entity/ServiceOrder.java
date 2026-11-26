@@ -1,6 +1,8 @@
 package com.benchos.api.order.internal.entity;
 
+import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.Voltage;
+import com.benchos.api.shared.exception.BusinessRuleException;
 import com.benchos.api.shared.id.UuidV7Generator;
 import com.benchos.api.shared.tenant.TenantAwareEntity;
 import jakarta.persistence.CascadeType;
@@ -39,6 +41,15 @@ public class ServiceOrder extends TenantAwareEntity {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "customer_rating")
+    private Integer customerRating;
+
+    @Column(name = "customer_feedback", columnDefinition = "TEXT")
+    private String customerFeedback;
+
+    @Column(name = "customer_rated_at")
+    private Instant customerRatedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -74,6 +85,19 @@ public class ServiceOrder extends TenantAwareEntity {
             String accessories,
             String reportedIssue
     ) {
+        return addItem(applianceType, brand, model, voltage, serialNumber, accessories, reportedIssue, null);
+    }
+
+    public ServiceOrderItem addItem(
+            String applianceType,
+            String brand,
+            String model,
+            Voltage voltage,
+            String serialNumber,
+            String accessories,
+            String reportedIssue,
+            List<IntakeChecklistEntry> intakeChecklist
+    ) {
         int nextIndex = this.items.size() + 1;
         ServiceOrderItem item = new ServiceOrderItem(
                 getTenantId(),
@@ -85,7 +109,8 @@ public class ServiceOrder extends TenantAwareEntity {
                 voltage,
                 serialNumber,
                 accessories,
-                reportedIssue
+                reportedIssue,
+                intakeChecklist
         );
         this.items.add(item);
         touch();
@@ -122,6 +147,29 @@ public class ServiceOrder extends TenantAwareEntity {
         return item;
     }
 
+    public void submitCustomerRating(int rating, String feedback, Instant now) {
+        if (rating < 1 || rating > 5) {
+            throw new BusinessRuleException("Customer rating must be between 1 and 5");
+        }
+        if (this.customerRating != null) {
+            throw new BusinessRuleException("This service order has already been rated");
+        }
+        boolean hasDeliveredItem = this.items.stream()
+                .anyMatch(item -> item.getStatus() == ItemStatus.DELIVERED);
+        if (!hasDeliveredItem) {
+            throw new BusinessRuleException("Service order can only be rated after at least one item is delivered");
+        }
+        String normalizedFeedback = normalizeOptional(feedback);
+        if (normalizedFeedback != null && normalizedFeedback.length() > 1000) {
+            throw new BusinessRuleException("Customer feedback must be at most 1000 characters");
+        }
+
+        this.customerRating = rating;
+        this.customerFeedback = normalizedFeedback;
+        this.customerRatedAt = now;
+        touch();
+    }
+
     public void touch() {
         this.updatedAt = Instant.now();
     }
@@ -148,6 +196,18 @@ public class ServiceOrder extends TenantAwareEntity {
 
     public String getNotes() {
         return notes;
+    }
+
+    public Integer getCustomerRating() {
+        return customerRating;
+    }
+
+    public String getCustomerFeedback() {
+        return customerFeedback;
+    }
+
+    public Instant getCustomerRatedAt() {
+        return customerRatedAt;
     }
 
     public Instant getCreatedAt() {

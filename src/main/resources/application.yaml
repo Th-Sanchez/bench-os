@@ -125,3 +125,7 @@ benchos:
     daily-alerts-enabled: ${PUSH_DAILY_ALERTS_ENABLED:false}
     daily-alerts-cron: ${PUSH_DAILY_ALERTS_CRON:0 30 8 * * *}
     daily-alerts-zone: ${PUSH_DAILY_ALERTS_ZONE:America/Sao_Paulo}
+  sentry:
+    dsn: ${SENTRY_DSN:}
+    environment: ${SENTRY_ENVIRONMENT:local}
+    release: ${SENTRY_RELEASE:benchos-api@1.0.0}

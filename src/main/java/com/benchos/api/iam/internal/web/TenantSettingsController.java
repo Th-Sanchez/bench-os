@@ -3,6 +3,9 @@ package com.benchos.api.iam.internal.web;
 import com.benchos.api.iam.internal.service.TenantSettingsService;
 import com.benchos.api.iam.internal.web.dto.AddApplianceTypeRequest;
 import com.benchos.api.iam.internal.web.dto.TenantSettingsResponse;
+import com.benchos.api.iam.internal.web.dto.UpdateCareTipsRequest;
+import com.benchos.api.iam.internal.web.dto.UpdateIntakeChecklistsRequest;
+import com.benchos.api.iam.internal.web.dto.UpdateShopBrandingRequest;
 import com.benchos.api.iam.internal.web.dto.UpdateTenantSettingsRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,5 +49,35 @@ public class TenantSettingsController {
     @PreAuthorize("hasRole('OWNER')")
     public TenantSettingsResponse removeApplianceType(@RequestParam String name) {
         return tenantSettingsService.removeCustomApplianceType(name);
+    }
+
+    @PutMapping("/intake-checklists")
+    @PreAuthorize("hasRole('OWNER')")
+    public TenantSettingsResponse updateIntakeChecklists(@Valid @RequestBody UpdateIntakeChecklistsRequest request) {
+        return tenantSettingsService.updateIntakeChecklists(request.templates());
+    }
+
+    @DeleteMapping("/intake-checklists")
+    @PreAuthorize("hasRole('OWNER')")
+    public TenantSettingsResponse resetIntakeChecklists() {
+        return tenantSettingsService.resetIntakeChecklists();
+    }
+
+    @PutMapping("/branding")
+    @PreAuthorize("hasRole('OWNER')")
+    public TenantSettingsResponse updateShopBranding(@Valid @RequestBody UpdateShopBrandingRequest request) {
+        return tenantSettingsService.updateShopBranding(request);
+    }
+
+    @PutMapping("/care-tips")
+    @PreAuthorize("hasRole('OWNER')")
+    public TenantSettingsResponse updateCareTips(@Valid @RequestBody UpdateCareTipsRequest request) {
+        return tenantSettingsService.updateCareTips(request.templates());
+    }
+
+    @DeleteMapping("/care-tips")
+    @PreAuthorize("hasRole('OWNER')")
+    public TenantSettingsResponse resetCareTips() {
+        return tenantSettingsService.resetCareTips();
     }
 }

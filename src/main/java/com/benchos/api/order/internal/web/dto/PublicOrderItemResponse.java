@@ -2,6 +2,7 @@ package com.benchos.api.order.internal.web.dto;
 
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.Voltage;
+import com.benchos.api.order.internal.entity.IntakeChecklistEntry;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ public record PublicOrderItemResponse(
         Voltage voltage,
         String serialNumber,
         String accessories,
+        List<IntakeChecklistEntry> intakeChecklist,
         String reportedIssue,
         ItemStatus status,
         String technicalDiagnosis,
@@ -30,13 +32,16 @@ public record PublicOrderItemResponse(
         Instant approvedAt,
         Instant finishedAt,
         Instant deliveredAt,
+        String deliverySignatureSvg,
         Instant discardedAt,
-        List<PublicOrderItemPhotoResponse> photos
+        List<PublicOrderItemPhotoResponse> photos,
+        List<String> careTips
 ) {
     public static PublicOrderItemResponse from(
             ServiceOrderItem item,
             long orderNumber,
-            List<PublicOrderItemPhotoResponse> photos
+            List<PublicOrderItemPhotoResponse> photos,
+            List<String> careTips
     ) {
         return new PublicOrderItemResponse(
                 item.getItemIndex(),
@@ -47,6 +52,7 @@ public record PublicOrderItemResponse(
                 item.getVoltage(),
                 item.getSerialNumber(),
                 item.getAccessories(),
+                item.getIntakeChecklist(),
                 item.getReportedIssue(),
                 item.getStatus(),
                 item.getTechnicalDiagnosis(),
@@ -56,8 +62,10 @@ public record PublicOrderItemResponse(
                 item.getApprovedAt(),
                 item.getFinishedAt(),
                 item.getDeliveredAt(),
+                item.getDeliverySignatureSvg(),
                 item.getDiscardedAt(),
-                photos
+                photos,
+                careTips == null ? List.of() : List.copyOf(careTips)
         );
     }
 }

@@ -7,12 +7,15 @@ import com.benchos.api.iam.internal.entity.TenantSettings;
 import com.benchos.api.iam.internal.repository.TenantRepository;
 import com.benchos.api.iam.internal.repository.TenantSettingsRepository;
 import com.benchos.api.iam.internal.web.dto.TenantSettingsResponse;
+import com.benchos.api.iam.internal.web.dto.UpdateShopBrandingRequest;
 import com.benchos.api.iam.internal.web.dto.UpdateTenantSettingsRequest;
 import com.benchos.api.shared.exception.ResourceNotFoundException;
 import com.benchos.api.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -41,7 +44,18 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getWhatsappIntakeTemplate(),
                 settings.getWhatsappQuoteTemplate(),
                 settings.getWhatsappReadyTemplate(),
-                settings.getCustomApplianceTypeList()
+                settings.getCustomApplianceTypeList(),
+                settings.getGoogleReviewUrl(),
+                settings.isDeliverySignatureEnabled(),
+                settings.getIntakeChecklistTemplateMap(),
+                settings.getPixKey(),
+                settings.getPixReceiverName(),
+                settings.getPixReceiverCity(),
+                settings.getShopLogoDataUrl(),
+                settings.getShopAddress(),
+                settings.getBusinessHours(),
+                settings.getWarrantyTerms(),
+                settings.getCareTipsTemplateMap()
         );
     }
 
@@ -77,7 +91,12 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.abandonmentDays(),
                 request.whatsappIntakeTemplate(),
                 request.whatsappQuoteTemplate(),
-                request.whatsappReadyTemplate()
+                request.whatsappReadyTemplate(),
+                request.googleReviewUrl(),
+                request.deliverySignatureEnabled(),
+                request.pixKey(),
+                request.pixReceiverName(),
+                request.pixReceiverCity()
         );
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
@@ -95,6 +114,52 @@ public class TenantSettingsService implements TenantSettingsQuery {
         UUID tenantId = TenantContext.requireCurrentTenant();
         TenantSettings settings = findOrThrow(tenantId);
         settings.removeCustomApplianceType(name);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateIntakeChecklists(Map<String, List<String>> templates) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateIntakeChecklistTemplates(templates);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse resetIntakeChecklists() {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.resetIntakeChecklistTemplates();
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateShopBranding(UpdateShopBrandingRequest request) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateBranding(
+                request.shopLogoDataUrl(),
+                request.clearLogo(),
+                request.shopAddress(),
+                request.businessHours(),
+                request.warrantyTerms()
+        );
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse updateCareTips(Map<String, List<String>> templates) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.updateCareTipsTemplates(templates);
+        return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
+    }
+
+    @Transactional
+    public TenantSettingsResponse resetCareTips() {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        TenantSettings settings = findOrThrow(tenantId);
+        settings.resetCareTipsTemplates();
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }
 

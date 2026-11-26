@@ -4,6 +4,7 @@ import com.benchos.api.iam.internal.entity.TenantSettings;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record TenantSettingsResponse(
@@ -14,7 +15,18 @@ public record TenantSettingsResponse(
         String whatsappIntakeTemplate,
         String whatsappQuoteTemplate,
         String whatsappReadyTemplate,
-        List<String> customApplianceTypes
+        List<String> customApplianceTypes,
+        String googleReviewUrl,
+        boolean deliverySignatureEnabled,
+        Map<String, List<String>> intakeChecklistTemplates,
+        String pixKey,
+        String pixReceiverName,
+        String pixReceiverCity,
+        String shopLogoDataUrl,
+        String shopAddress,
+        String businessHours,
+        String warrantyTerms,
+        Map<String, List<String>> careTipsTemplates
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -25,7 +37,18 @@ public record TenantSettingsResponse(
                 settings.getWhatsappIntakeTemplate(),
                 settings.getWhatsappQuoteTemplate(),
                 settings.getWhatsappReadyTemplate(),
-                settings.getCustomApplianceTypeList()
+                settings.getCustomApplianceTypeList(),
+                settings.getGoogleReviewUrl(),
+                settings.isDeliverySignatureEnabled(),
+                settings.getIntakeChecklistTemplateMap(),
+                settings.getPixKey(),
+                settings.getPixReceiverName(),
+                settings.getPixReceiverCity(),
+                settings.getShopLogoDataUrl(),
+                settings.getShopAddress(),
+                settings.getBusinessHours(),
+                settings.getWarrantyTerms(),
+                settings.getCareTipsTemplateMap()
         );
     }
 }
