@@ -14,7 +14,9 @@ public record TenantSettingsResponse(
         String whatsappIntakeTemplate,
         String whatsappQuoteTemplate,
         String whatsappReadyTemplate,
-        List<String> customApplianceTypes
+        List<String> customApplianceTypes,
+        String googleReviewUrl,
+        boolean deliverySignatureEnabled
 ) {
     public static TenantSettingsResponse from(TenantSettings settings) {
         return new TenantSettingsResponse(
@@ -25,7 +27,9 @@ public record TenantSettingsResponse(
                 settings.getWhatsappIntakeTemplate(),
                 settings.getWhatsappQuoteTemplate(),
                 settings.getWhatsappReadyTemplate(),
-                settings.getCustomApplianceTypeList()
+                settings.getCustomApplianceTypeList(),
+                settings.getGoogleReviewUrl(),
+                settings.isDeliverySignatureEnabled()
         );
     }
 }

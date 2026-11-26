@@ -14,14 +14,19 @@ import java.util.UUID;
 public record PublicOrderResponse(
         String shopName,
         String shopPhone,
+        String googleReviewUrl,
         long orderNumber,
         Instant createdAt,
+        Integer customerRating,
+        String customerFeedback,
+        Instant customerRatedAt,
         List<PublicOrderItemResponse> items
 ) {
     public static PublicOrderResponse from(
             ServiceOrder order,
             String shopName,
             String shopPhone,
+            String googleReviewUrl,
             Map<UUID, List<PublicOrderItemPhotoResponse>> photosByItemId
     ) {
         List<PublicOrderItemResponse> itemResponses = order.getItems().stream()
@@ -34,8 +39,12 @@ public record PublicOrderResponse(
         return new PublicOrderResponse(
                 shopName,
                 shopPhone,
+                googleReviewUrl,
                 order.getOrderNumber(),
                 order.getCreatedAt(),
+                order.getCustomerRating(),
+                order.getCustomerFeedback(),
+                order.getCustomerRatedAt(),
                 itemResponses
         );
     }

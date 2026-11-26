@@ -41,7 +41,9 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 settings.getWhatsappIntakeTemplate(),
                 settings.getWhatsappQuoteTemplate(),
                 settings.getWhatsappReadyTemplate(),
-                settings.getCustomApplianceTypeList()
+                settings.getCustomApplianceTypeList(),
+                settings.getGoogleReviewUrl(),
+                settings.isDeliverySignatureEnabled()
         );
     }
 
@@ -77,7 +79,9 @@ public class TenantSettingsService implements TenantSettingsQuery {
                 request.abandonmentDays(),
                 request.whatsappIntakeTemplate(),
                 request.whatsappQuoteTemplate(),
-                request.whatsappReadyTemplate()
+                request.whatsappReadyTemplate(),
+                request.googleReviewUrl(),
+                request.deliverySignatureEnabled()
         );
         return TenantSettingsResponse.from(tenantSettingsRepository.save(settings));
     }

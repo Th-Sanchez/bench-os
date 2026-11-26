@@ -1,11 +1,13 @@
 package com.benchos.api.iam.internal.entity;
 
+import com.benchos.api.shared.exception.BusinessRuleException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,6 +20,7 @@ public class TenantSettings {
     public static final BigDecimal DEFAULT_LABOR_COST = BigDecimal.ZERO.setScale(2);
     public static final int DEFAULT_ESTIMATED_DAYS = 3;
     public static final int DEFAULT_ABANDONMENT_DAYS = 180;
+    public static final boolean DEFAULT_DELIVERY_SIGNATURE_ENABLED = false;
     public static final String DEFAULT_WHATSAPP_INTAKE_TEMPLATE =
             "Olá {customerName}! Registramos sua OS #{orderNumber}:\n{appliances}\nAcompanhe o andamento em tempo real: {trackingUrl}";
     public static final String DEFAULT_WHATSAPP_QUOTE_TEMPLATE =
@@ -50,6 +53,12 @@ public class TenantSettings {
     @Column(name = "custom_appliance_types", columnDefinition = "TEXT")
     private String customApplianceTypes;
 
+    @Column(name = "google_review_url", length = 500)
+    private String googleReviewUrl;
+
+    @Column(name = "delivery_signature_enabled", nullable = false)
+    private boolean deliverySignatureEnabled;
+
     protected TenantSettings() {
     }
 
@@ -63,6 +72,8 @@ public class TenantSettings {
         settings.whatsappQuoteTemplate = DEFAULT_WHATSAPP_QUOTE_TEMPLATE;
         settings.whatsappReadyTemplate = DEFAULT_WHATSAPP_READY_TEMPLATE;
         settings.customApplianceTypes = null;
+        settings.googleReviewUrl = null;
+        settings.deliverySignatureEnabled = DEFAULT_DELIVERY_SIGNATURE_ENABLED;
         return settings;
     }
 
@@ -74,6 +85,49 @@ public class TenantSettings {
             String whatsappQuoteTemplate,
             String whatsappReadyTemplate
     ) {
+        update(
+                defaultLaborCost,
+                defaultEstimatedDays,
+                abandonmentDays,
+                whatsappIntakeTemplate,
+                whatsappQuoteTemplate,
+                whatsappReadyTemplate,
+                null,
+                null
+        );
+    }
+
+    public void update(
+            BigDecimal defaultLaborCost,
+            int defaultEstimatedDays,
+            int abandonmentDays,
+            String whatsappIntakeTemplate,
+            String whatsappQuoteTemplate,
+            String whatsappReadyTemplate,
+            String googleReviewUrl
+    ) {
+        update(
+                defaultLaborCost,
+                defaultEstimatedDays,
+                abandonmentDays,
+                whatsappIntakeTemplate,
+                whatsappQuoteTemplate,
+                whatsappReadyTemplate,
+                googleReviewUrl,
+                null
+        );
+    }
+
+    public void update(
+            BigDecimal defaultLaborCost,
+            int defaultEstimatedDays,
+            int abandonmentDays,
+            String whatsappIntakeTemplate,
+            String whatsappQuoteTemplate,
+            String whatsappReadyTemplate,
+            String googleReviewUrl,
+            Boolean deliverySignatureEnabled
+    ) {
         this.defaultLaborCost = defaultLaborCost;
         this.defaultEstimatedDays = defaultEstimatedDays;
         this.abandonmentDays = abandonmentDays;
@@ -83,6 +137,34 @@ public class TenantSettings {
         this.whatsappQuoteTemplate = whatsappQuoteTemplate;
         if (whatsappReadyTemplate != null) {
             this.whatsappReadyTemplate = whatsappReadyTemplate;
+        }
+        if (googleReviewUrl != null) {
+            this.googleReviewUrl = normalizeAndValidateUrl(googleReviewUrl);
+        }
+        if (deliverySignatureEnabled != null) {
+            this.deliverySignatureEnabled = deliverySignatureEnabled;
+        }
+    }
+
+    private static String normalizeAndValidateUrl(String rawUrl) {
+        String trimmed = rawUrl.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > 500) {
+            throw new BusinessRuleException("Google review URL must be at most 500 characters");
+        }
+        try {
+            URI uri = URI.create(trimmed);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme))
+                    || host == null || host.isBlank()) {
+                throw new BusinessRuleException("Google review URL must be a valid http(s) URL");
+            }
+            return trimmed;
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessRuleException("Google review URL must be a valid http(s) URL");
         }
     }
 
@@ -146,5 +228,13 @@ public class TenantSettings {
 
     public String getWhatsappReadyTemplate() {
         return whatsappReadyTemplate;
+    }
+
+    public String getGoogleReviewUrl() {
+        return googleReviewUrl;
+    }
+
+    public boolean isDeliverySignatureEnabled() {
+        return deliverySignatureEnabled;
     }
 }

@@ -106,6 +106,12 @@ public class ServiceOrderItem extends TenantAwareEntity {
     @Column(name = "delivered_at")
     private Instant deliveredAt;
 
+    @Column(name = "delivery_signature_svg", columnDefinition = "TEXT")
+    private String deliverySignatureSvg;
+
+    @Column(name = "delivery_signer_name", length = 120)
+    private String deliverySignerName;
+
     @Column(name = "discarded_at")
     private Instant discardedAt;
 
@@ -337,7 +343,21 @@ public class ServiceOrderItem extends TenantAwareEntity {
     }
 
     public Optional<OrderItemDeliveredEvent> deliver(List<PaymentPart> payments, Instant now) {
+        return deliver(payments, null, null, now);
+    }
+
+    public Optional<OrderItemDeliveredEvent> deliver(
+            List<PaymentPart> payments,
+            String deliverySignatureSvg,
+            String deliverySignerName,
+            Instant now
+    ) {
         List<PaymentPart> normalizedPayments = payments == null ? List.of() : payments;
+        String sanitizedSignature = DeliverySignatureSanitizer.sanitize(deliverySignatureSvg);
+        String normalizedSignerName = normalizeOptional(deliverySignerName);
+        if (normalizedSignerName != null && normalizedSignerName.length() > 120) {
+            throw new BusinessRuleException("Delivery signer name must be at most 120 characters");
+        }
 
         if (this.status == ItemStatus.READY_FOR_PICKUP) {
             if (this.totalPrice.compareTo(BigDecimal.ZERO) > 0) {
@@ -367,6 +387,8 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
                 this.status = ItemStatus.DELIVERED;
                 this.deliveredAt = now;
+                this.deliverySignatureSvg = sanitizedSignature;
+                this.deliverySignerName = normalizedSignerName;
                 touch(now);
 
                 return Optional.of(new OrderItemDeliveredEvent(
@@ -386,6 +408,8 @@ public class ServiceOrderItem extends TenantAwareEntity {
             }
             this.status = ItemStatus.DELIVERED;
             this.deliveredAt = now;
+            this.deliverySignatureSvg = sanitizedSignature;
+            this.deliverySignerName = normalizedSignerName;
             touch(now);
             return Optional.empty();
         }
@@ -400,6 +424,8 @@ public class ServiceOrderItem extends TenantAwareEntity {
             this.totalPrice = ZERO_AMOUNT;
             this.status = ItemStatus.DELIVERED;
             this.deliveredAt = now;
+            this.deliverySignatureSvg = sanitizedSignature;
+            this.deliverySignerName = normalizedSignerName;
             touch(now);
             return Optional.empty();
         }
@@ -517,6 +543,14 @@ public class ServiceOrderItem extends TenantAwareEntity {
 
     public Instant getDeliveredAt() {
         return deliveredAt;
+    }
+
+    public String getDeliverySignatureSvg() {
+        return deliverySignatureSvg;
+    }
+
+    public String getDeliverySignerName() {
+        return deliverySignerName;
     }
 
     public int remainingWarrantyDays(Instant now) {

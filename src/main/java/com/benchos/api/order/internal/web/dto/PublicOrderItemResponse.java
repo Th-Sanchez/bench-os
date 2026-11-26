@@ -30,6 +30,7 @@ public record PublicOrderItemResponse(
         Instant approvedAt,
         Instant finishedAt,
         Instant deliveredAt,
+        String deliverySignatureSvg,
         Instant discardedAt,
         List<PublicOrderItemPhotoResponse> photos
 ) {
@@ -56,6 +57,7 @@ public record PublicOrderItemResponse(
                 item.getApprovedAt(),
                 item.getFinishedAt(),
                 item.getDeliveredAt(),
+                item.getDeliverySignatureSvg(),
                 item.getDiscardedAt(),
                 photos
         );

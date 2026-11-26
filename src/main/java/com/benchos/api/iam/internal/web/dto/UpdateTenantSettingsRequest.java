@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -13,6 +14,8 @@ public record UpdateTenantSettingsRequest(
         @NotNull @Min(1) Integer abandonmentDays,
         String whatsappQuoteTemplate,
         String whatsappIntakeTemplate,
-        String whatsappReadyTemplate
+        String whatsappReadyTemplate,
+        @Size(max = 500) String googleReviewUrl,
+        Boolean deliverySignatureEnabled
 ) {
 }

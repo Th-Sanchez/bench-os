@@ -15,6 +15,8 @@ public record TenantSettingsSnapshot(
         String whatsappIntakeTemplate,
         String whatsappQuoteTemplate,
         String whatsappReadyTemplate,
-        List<String> customApplianceTypes
+        List<String> customApplianceTypes,
+        String googleReviewUrl,
+        boolean deliverySignatureEnabled
 ) {
 }
