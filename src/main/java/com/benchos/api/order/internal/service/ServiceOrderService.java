@@ -8,6 +8,7 @@ import com.benchos.api.iam.TenantSettingsSnapshot;
 import com.benchos.api.iam.UserDirectoryQuery;
 import com.benchos.api.iam.UserSnapshot;
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.OrderCreatedEvent;
 import com.benchos.api.order.internal.entity.QuoteOption;
 import com.benchos.api.order.internal.entity.ServiceOrder;
 import com.benchos.api.order.internal.entity.ServiceOrderItem;
@@ -32,6 +33,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -70,6 +72,7 @@ public class ServiceOrderService {
     private final CustomerQuery customerQuery;
     private final TenantSettingsQuery tenantSettingsQuery;
     private final UserDirectoryQuery userDirectoryQuery;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ServiceOrderService(
             ServiceOrderRepository serviceOrderRepository,
@@ -78,7 +81,8 @@ public class ServiceOrderService {
             TenantSequenceService tenantSequenceService,
             CustomerQuery customerQuery,
             TenantSettingsQuery tenantSettingsQuery,
-            UserDirectoryQuery userDirectoryQuery
+            UserDirectoryQuery userDirectoryQuery,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.serviceOrderRepository = serviceOrderRepository;
         this.serviceOrderItemRepository = serviceOrderItemRepository;
@@ -87,6 +91,7 @@ public class ServiceOrderService {
         this.customerQuery = customerQuery;
         this.tenantSettingsQuery = tenantSettingsQuery;
         this.userDirectoryQuery = userDirectoryQuery;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -114,6 +119,16 @@ public class ServiceOrderService {
         }
 
         ServiceOrder savedOrder = serviceOrderRepository.save(order);
+        eventPublisher.publishEvent(new OrderCreatedEvent(
+                tenantId,
+                savedOrder.getId(),
+                savedOrder.getOrderNumber(),
+                savedOrder.getPublicToken(),
+                customer.id(),
+                customer.name(),
+                savedOrder.getItems().size(),
+                savedOrder.getCreatedAt()
+        ));
         return ServiceOrderResponse.from(savedOrder, customer, savedOrder.getItems());
     }
 
