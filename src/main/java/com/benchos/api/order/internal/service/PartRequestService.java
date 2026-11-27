@@ -3,6 +3,7 @@ package com.benchos.api.order.internal.service;
 import com.benchos.api.customer.CustomerQuery;
 import com.benchos.api.customer.CustomerSnapshot;
 import com.benchos.api.order.ItemStatus;
+import com.benchos.api.order.OrderPartArrivedEvent;
 import com.benchos.api.order.PartRequestArrivedEvent;
 import com.benchos.api.order.PartRequestStatus;
 import com.benchos.api.order.PaymentMethod;
@@ -401,6 +402,22 @@ public class PartRequestService {
                     now
             ));
         }
+
+        eventPublisher.publishEvent(new OrderPartArrivedEvent(
+                tenantId,
+                saved.getId(),
+                lockedItem.getServiceOrder().getId(),
+                lockedItem.getId(),
+                lockedItem.getServiceOrder().getOrderNumber(),
+                lockedItem.getItemIndex(),
+                lockedItem.getTag(),
+                saved.getPartName(),
+                saved.getQuantity(),
+                effectiveTotal,
+                saved.getSupplierName(),
+                lockedItem.getStatus(),
+                now
+        ));
 
         String customerName = resolveCustomerName(lockedItem.getServiceOrder().getCustomerId(), tenantId);
         return PartRequestResponse.from(saved, customerName);

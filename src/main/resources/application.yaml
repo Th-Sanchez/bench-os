@@ -118,6 +118,10 @@ benchos:
     resend-base-url: ${RESEND_BASE_URL:https://api.resend.com}
     reset-code-ttl: ${MAIL_RESET_CODE_TTL:15m}
     resend-cooldown: ${MAIL_RESEND_COOLDOWN:60s}
+  webhooks:
+    allow-private-targets: ${WEBHOOKS_ALLOW_PRIVATE_TARGETS:true}
+    connect-timeout-ms: ${WEBHOOKS_CONNECT_TIMEOUT_MS:5000}
+    request-timeout-ms: ${WEBHOOKS_REQUEST_TIMEOUT_MS:8000}
   push:
     provider: ${PUSH_PROVIDER:log}
     expo-endpoint-url: ${EXPO_PUSH_ENDPOINT_URL:https://exp.host/--/api/v2/push/send}

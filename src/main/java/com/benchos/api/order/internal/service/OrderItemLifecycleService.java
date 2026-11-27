@@ -9,6 +9,7 @@ import com.benchos.api.iam.UserDirectoryQuery;
 import com.benchos.api.iam.UserSnapshot;
 import com.benchos.api.order.ItemStatus;
 import com.benchos.api.order.OrderItemDeliveredEvent;
+import com.benchos.api.order.OrderItemStatusChangedEvent;
 import com.benchos.api.order.PaymentPart;
 import com.benchos.api.order.WhatsappMessageStage;
 import com.benchos.api.order.internal.config.PublicTrackingProperties;
@@ -167,6 +168,9 @@ public class OrderItemLifecycleService {
         }
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
+        if (saved.getStatus() == ItemStatus.QUOTE_SENT) {
+            publishStatusChangedEvent(saved, now);
+        }
         return toItemResponse(saved, tenantId);
     }
 
@@ -208,6 +212,11 @@ public class OrderItemLifecycleService {
         }
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
+        if (saved.getStatus() == ItemStatus.QUOTE_SENT
+                || saved.getStatus() == ItemStatus.APPROVED
+                || saved.getStatus() == ItemStatus.READY_FOR_PICKUP) {
+            publishStatusChangedEvent(saved, now);
+        }
         return toItemResponse(saved, tenantId);
     }
 
@@ -245,6 +254,22 @@ public class OrderItemLifecycleService {
 
         ServiceOrderItem saved = serviceOrderItemRepository.saveAndFlush(item);
         return toItemResponse(saved, tenantId);
+    }
+
+    private void publishStatusChangedEvent(ServiceOrderItem saved, Instant changedAt) {
+        eventPublisher.publishEvent(new OrderItemStatusChangedEvent(
+                saved.getTenantId(),
+                saved.getServiceOrder().getId(),
+                saved.getId(),
+                saved.getServiceOrder().getOrderNumber(),
+                saved.getItemIndex(),
+                saved.getTag(),
+                saved.getApplianceDisplayName(),
+                saved.getStatus(),
+                saved.getTotalPrice(),
+                saved.getSelectedQuoteOptionLabel(),
+                changedAt
+        ));
     }
 
     @Transactional

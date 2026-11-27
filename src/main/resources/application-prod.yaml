@@ -54,6 +54,10 @@ benchos:
     daily-alerts-enabled: ${PUSH_DAILY_ALERTS_ENABLED:true}
     daily-alerts-cron: ${PUSH_DAILY_ALERTS_CRON:0 30 8 * * *}
     daily-alerts-zone: ${PUSH_DAILY_ALERTS_ZONE:America/Sao_Paulo}
+  webhooks:
+    allow-private-targets: ${WEBHOOKS_ALLOW_PRIVATE_TARGETS:false}
+    connect-timeout-ms: ${WEBHOOKS_CONNECT_TIMEOUT_MS:5000}
+    request-timeout-ms: ${WEBHOOKS_REQUEST_TIMEOUT_MS:8000}
 
 logging:
   pattern:
