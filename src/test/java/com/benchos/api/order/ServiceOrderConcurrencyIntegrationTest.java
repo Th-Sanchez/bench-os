@@ -155,12 +155,17 @@ class ServiceOrderConcurrencyIntegrationTest {
             assertThat(queryItemStatus(quoted.itemId())).isEqualTo(expectedFinalStatus);
             assertThat(queryItemVersion(quoted.itemId())).isEqualTo(versionBefore + 1);
 
-            // Exactly ONE PublicQuoteRespondedEvent persisted to the outbox (no contradictory push notifications)
-            Integer quoteEvents = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%PublicQuoteRespondedEvent'",
+            // Exactly ONE PublicQuoteRespondedEvent published (per listener — no contradictory push/webhook notifications)
+            Integer distinctQuoteEvents = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(DISTINCT serialized_event) FROM event_publication WHERE event_type LIKE '%PublicQuoteRespondedEvent'",
                     Integer.class
             );
-            assertThat(quoteEvents).isEqualTo(1);
+            Integer pushListenerEvents = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM event_publication WHERE event_type LIKE '%PublicQuoteRespondedEvent' AND listener_id LIKE '%PublicQuotePushNotificationListener%'",
+                    Integer.class
+            );
+            assertThat(distinctQuoteEvents).isEqualTo(1);
+            assertThat(pushListenerEvents).isEqualTo(1);
         } finally {
             pool.shutdownNow();
         }
